@@ -23,9 +23,14 @@ output_path <- "../output/"
 
 ### Read in
 #warm_spi <- read_tsv("../data/NASPA_WARM_SPI.txt")
+# the txt file is for Oklahoma city
+
 naspa_spi3 <- read_tsv("../data/NASPA_Reconstructed_MJJ_0_2016_SPI.txt", skip = 2)%>% 
 	rename(year = Year, spi3=SPI)
-	
+
+loc <- data.frame(site="OKC,OK",
+                  lon=c(-98,-97.5),
+                  lat= c(35.0,35.5))
 ### Add a month column
 naspa_spi3 <- naspa_spi3 %>% 	
   mutate(month = 7) %>%
@@ -34,7 +39,7 @@ naspa_spi3 <- naspa_spi3 %>%
   mutate(date = as.Date(ceiling_date(date, "month")-1)) %>%
   arrange(date)
 naspa_spi3 <- naspa_spi3 %>%
-  mutate(spi5 = naspa_spi5$naspa_spi5)
+  mutate(spi5 = naspa_spi5$spi5)
 
 head(naspa_spi3)
 
@@ -52,9 +57,6 @@ print(nc_gpcc)
 #loc <- data.frame(site="columbus,co",
 #                  lon=c(-83,-82.5),
 #                  lat= c(39.5,40))
-loc <- data.frame(site="OKC,OK",
-                  lon=c(-98,-97.5),
-                  lat= c(35.0,35.5))
 
 var1 <- attributes(nc_gpcc$var)
 lat_list <- ncvar_get(nc_gpcc, "lat")
@@ -75,7 +77,7 @@ yup <- tibble(site = loc$site[1], date = date_list,
 
 gpcc_df <- yup %>%
   mutate(model = "GPCC") %>%
-  mutate(units = "mm") %>%
+  mutate(units = "mm/month") %>%
   mutate(year = year(date)) %>%
   mutate(month = month(date)) %>%
   mutate(month_day= paste0(month(date),"-",day(date))) %>%
@@ -92,9 +94,7 @@ gpcc_df <- gpcc_df %>%
   ) %>%
   select(-roll_mean_3_notna) %>%
   mutate(date = ceiling_date(date, "month") - 1) %>%
-  mutate(units = "mm/day") %>%
   select(date, site, model,precip,units, value) #date removed
-
 
 n_roll <- 5
 n_roll_min <- 4
@@ -120,6 +120,11 @@ gpcc_df <- gpcc_df %>%
   mutate(spi5 = qnorm(prob5,mean = 0, sd = 1)) %>%
   ungroup()
 
+paras<- gpcc_df %>% select(date,shape3, rate3) %>%
+  group_by(month(date)) %>%
+  summarise(shape = mean(shape3), rate = mean(rate3)) %>%
+  rename( month =`month(date)`)
+
 n_library <- length(gpcc_df$precip)
 ### Convert library into a dataframe
 library_df <- data.frame(i = seq(1,n_library), spi_thisjuly = as.numeric(gpcc_df$spi3)) %>%
@@ -133,7 +138,7 @@ library_df <- library_df %>% select(-i)
 n_neighbors <- 10
 
 for (year_i in c(300:2000)){ 
-year_i <- 1930
+
 #### Eventually put this in a loop through years
 date_subset <- seq(as.Date(paste0(year_i,"-08-01")),
                    as.Date(paste0(year_i+1,"-08-01")), 
@@ -179,10 +184,21 @@ if(year_i == 300){
   }
 
 }
-naspa_subset_iter_wide <- naspa_subset_iter %>% 
-	pivot_wider(names_from = iter, values_from = spi3) 
+#naspa_subset_iter_wide <- naspa_subset_iter %>% 
+#	pivot_wider(names_from = iter, values_from = spi3) 
 
-naspa_subset_iter_wide
+#naspa_subset_iter_wide
+
+predicted_df <- predicted_df %>%
+  mutate(month = month(date)) %>%
+  right_join(paras, by= "month") %>%
+  mutate(prob = pnorm(spi3)) %>%
+  mutate(precip = qgamma(prob, shape = shape, rate = rate)) 
+
+
+###########################################################
+###                     plotting                      #####
+###########################################################
 temp <- gpcc_df %>% 
   filter(date %in% date_subset) %>%
   mutate(iter = "GPCC") %>%
@@ -243,3 +259,40 @@ p <-ggplot(predicted_df%>% filter(year(date) > 1990 & year(date) < 2000) ,
 p
 ggsave(p,filename = paste0(output_path,"1990 years,OKC.png"),width = 6, height = 4 )
 
+###########################################################
+###                     plotting flow               #####
+###########################################################
+p <-ggplot(data = predicted_df %>% filter(year(date) > 1940 & year(date) < 1950),
+           aes(x=date, y= precip)) +
+  geom_line() +
+  geom_line(data = gpcc_df%>% filter(year(date) > 1940 & year(date) < 1950),
+            aes(y = precip, color = "GPCC" )) +
+  #geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
+  #           mapping = aes(y = spi3, color = "naspa_spi3")) +
+  #geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
+  #           mapping = aes(y = spi5, color = "naspa_spi5")) +
+  labs(title = paste0("3months ave. flow,  OKC,OK"),
+       y = "3-months Precip(mm/m)",
+       color = "data") +
+  theme_classic(base_size = 18)
+
+p
+
+ggsave(p,filename = paste0(output_path,"1940precip,OKC.png"),width = 6, height = 4 )
+
+
+readRDS(file = paste0(output_path,"predictedpreip.rds"))
+p <- ggplot(predicted_df %>% filter(year(date) > 1900 & month(date) == 2),
+            aes(x = date, y= precip)) + 
+  geom_line() +
+  #geom_point(naspa_spi3 %>% filter(year > 1800 & month == 7), 
+  #           mapping = aes(y = spi3, color = "naspa")) +
+  geom_line(data = gpcc_df %>%filter(month(date) == 2), aes(y = precip,color = "gpcc")) +
+  labs(title ="DJF precip, naspa and GPCC,OKC,OK",
+       y = "3months ave.prcp(mm/m)") +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic(base_size = 18)
+p
+ggsave(p,filename = paste0(output_path,"DJFprcp.png"),width = 6, height = 4 )
+
+saveRDS(predicted_df, file = paste0(output_path,"predictedpreip.rds"))
