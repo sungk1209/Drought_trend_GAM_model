@@ -19,7 +19,7 @@ require(zoo)
 require(mgcv)
 require(gratia)
 
-setwd("C:/Users/kyungmin/Documents/Biascorrection/NASPA")
+#setwd("C:/Users/kyungmin/Documents/Biascorrection/NASPA")
 ### Path for Data and Output	
 data_path <- "../data"
 output_path <- "../output"

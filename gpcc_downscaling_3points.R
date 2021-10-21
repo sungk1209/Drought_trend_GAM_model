@@ -195,6 +195,7 @@ predicted_df <- predicted_df %>%
   mutate(prob = pnorm(spi3)) %>%
   mutate(precip = qgamma(prob, shape = shape, rate = rate)) 
 
+saveRDS(predicted_df, file = paste0(output_path,"predictedpreip.rds"))
 
 ###########################################################
 ###                     plotting                      #####
@@ -260,7 +261,7 @@ p
 ggsave(p,filename = paste0(output_path,"1990 years,OKC.png"),width = 6, height = 4 )
 
 ###########################################################
-###                     plotting flow               #####
+###                     plotting flow                 #####
 ###########################################################
 p <-ggplot(data = predicted_df %>% filter(year(date) > 1940 & year(date) < 1950),
            aes(x=date, y= precip)) +
@@ -282,17 +283,20 @@ ggsave(p,filename = paste0(output_path,"1940precip,OKC.png"),width = 6, height =
 
 
 readRDS(file = paste0(output_path,"predictedpreip.rds"))
-p <- ggplot(predicted_df %>% filter(year(date) > 1900 & month(date) == 2),
-            aes(x = date, y= precip)) + 
+#Need naspa_df from the file"building_naspa_precip"
+p <- ggplot(predicted_df %>% 
+              filter(year(date) > 900 & year(date) < 1000),
+            aes(x = date, y= precip, color ="predicted")) + 
   geom_line() +
-  #geom_point(naspa_spi3 %>% filter(year > 1800 & month == 7), 
-  #           mapping = aes(y = spi3, color = "naspa")) +
-  geom_line(data = gpcc_df %>%filter(month(date) == 2), aes(y = precip,color = "gpcc")) +
-  labs(title ="DJF precip, naspa and GPCC,OKC,OK",
+  geom_point(naspa_df %>%
+              filter(year(date) > 900 & year(date) < 1000), 
+             mapping = aes(y = precip, color = "naspa")) +
+ # geom_line(data = gpcc_df %>%filter(month(date) == 7), aes(y = precip,color = "gpcc")) +
+  labs(title ="MJJ precip, naspa and predicted",
        y = "3months ave.prcp(mm/m)") +
   scale_color_brewer(palette = "Set1") +
   theme_classic(base_size = 18)
 p
-ggsave(p,filename = paste0(output_path,"DJFprcp.png"),width = 6, height = 4 )
+ggsave(p,filename = paste0(output_path,"naspa900.png"),width = 6, height = 4 )
 
-saveRDS(predicted_df, file = paste0(output_path,"predictedpreip.rds"))
+

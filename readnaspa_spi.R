@@ -1,6 +1,5 @@
 
 
-
 NASPA_COOL_SPI
 
 fn_co <- "NASPA_COOL_SPI.nc"
