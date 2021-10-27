@@ -94,7 +94,7 @@ gpcc_df <- gpcc_df %>%
   ) %>%
   select(-roll_mean_3_notna) %>%
   mutate(date = ceiling_date(date, "month") - 1) %>%
-  select(date, site, model,precip,units, value) #date removed
+  select(date, site, model,precip,units, value) 
 
 n_roll <- 5
 n_roll_min <- 4
@@ -123,7 +123,7 @@ gpcc_df <- gpcc_df %>%
 paras<- gpcc_df %>% select(date,shape3, rate3) %>%
   group_by(month(date)) %>%
   summarise(shape = mean(shape3), rate = mean(rate3)) %>%
-  rename( month =`month(date)`)
+  rename(month =`month(date)`)
 
 n_library <- length(gpcc_df$precip)
 ### Convert library into a dataframe
@@ -173,14 +173,14 @@ for(k in seq(1,n_neighbors)){
 		naspa_subset_iter <- naspa_subset_iter %>% bind_rows(naspa_subset_k)
 	}
 }
-  smoothed <- loess(spi3 ~ as.numeric(date),data = naspa_subset_iter)
-  predicted_k <- data.frame(date= date_subset,
-                            spi3 = predict(smoothed, newdata = naspa_subset$date))
+  #smoothed <- loess(spi3 ~ as.numeric(date),data = naspa_subset_iter)
+  #predicted_k <- data.frame(date= date_subset,
+  #                         spi3 = predict(smoothed, newdata = naspa_subset$date))
 if(year_i == 300){
-  predicted_df <- predicted_k
+  predicted_df <- naspa_subset_iter
   
   } else {
-  predicted_df <- predicted_df %>% bind_rows(predicted_k)
+  predicted_df <- predicted_df %>% bind_rows(naspa_subset_iter)
   }
 
 }
@@ -194,6 +194,7 @@ predicted_df <- predicted_df %>%
   right_join(paras, by= "month") %>%
   mutate(prob = pnorm(spi3)) %>%
   mutate(precip = qgamma(prob, shape = shape, rate = rate)) 
+predicted_df$iter <- as.factor(predicted_df$iter)
 
 saveRDS(predicted_df, file = paste0(output_path,"predictedpreip.rds"))
 
@@ -211,7 +212,7 @@ temp2 <- rbind(naspa_subset_iter,temp)
 
 p <-ggplot(temp2, aes(x=date, y=spi3)) +
   geom_point(aes(colour= iter)) + 
-  geom_smooth(alpha = 0.5) +
+    geom_smooth(alpha = 0.5) +
   geom_line(data = temp2 %>% filter(iter == "GPCC"), size = 2) +
   labs(title = paste0(year_i,"years with, OKC,OK")) +
   coord_cartesian(ylim = c(-2.5,2.5)) +
@@ -222,9 +223,10 @@ ggsave(p,filename = paste0(output_path,year_i,"1930_5OKC.png"))
 
 p <-ggplot(predicted_df %>% filter(year(date) > 1900 & year(date) < 1930), 
            aes(x=date, y=spi3)) +
-  geom_line() +
+  geom_line(aes(colour = "black")) + 
   geom_line(data = gpcc_df %>% filter(year(date) > 1900 & year(date) < 1930),
             aes(y = spi3), color = "blue" ) +
+ 
   labs(title = paste0("1900 - 1930,OKC,OK"),
        color = "data") 
 p
@@ -232,8 +234,8 @@ p
 ggsave(p,filename = paste0(output_path,"1900-1930 Tempa.png"),width = 6, height = 4)
 
 p <- ggplot(predicted_df %>% filter(year(date) > 1800 & month(date) == 7),
-            aes(x = date, y=spi3)) + 
-  geom_line() +
+            aes(x = date, y=spi3,  color = iter)) + 
+  geom_line() + scale_colour_brewer(type = "seq", aesthetics = "colour") +
   geom_point(naspa_spi3 %>% filter(year > 1800 & month == 7), 
             mapping = aes(y = spi3, color = "naspa")) +
   geom_line(data = gpcc_df%>%filter(month(date) == 7), aes(y = spi3,color = "gpcc")) +
@@ -244,11 +246,12 @@ p
 
 ggsave(p,filename = paste0(output_path,"MJJ","OKC2.png"),width = 6, height = 4)
 
-p <-ggplot(predicted_df%>% filter(year(date) > 1990 & year(date) < 2000) , 
+p <- ggplot(predicted_df %>% filter(year(date) > 1990 & year(date) < 2000) , 
            aes(x=date, y=spi3)) +
   geom_line() +
   geom_line(data = gpcc_df%>% filter(year(date) > 1990 &year(date) < 2000),
             aes(y = spi3, color = "GPCC" )) +
+  
   geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
              mapping = aes(y = spi3, color = "naspa_spi3")) +
   geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
@@ -263,31 +266,32 @@ ggsave(p,filename = paste0(output_path,"1990 years,OKC.png"),width = 6, height =
 ###########################################################
 ###                     plotting flow                 #####
 ###########################################################
-p <-ggplot(data = predicted_df %>% filter(year(date) > 1940 & year(date) < 1950),
+p <-ggplot(predicted_df %>% 
+             filter(year(date) > 300 & year(date) < 310),
            aes(x=date, y= precip)) +
-  geom_line() +
-  geom_line(data = gpcc_df%>% filter(year(date) > 1940 & year(date) < 1950),
-            aes(y = precip, color = "GPCC" )) +
+  geom_line(aes(group = iter), color = "skyblue3") +
+  scale_color_brewer(type = "seq") +
+  #geom_line(data = gpcc_df %>% filter(year(date) > 1940 & year(date) < 1950),
+  #          aes(x = date, y = precip, color = "GPCC" ), color = "red",size = 1.0) +
   #geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
   #           mapping = aes(y = spi3, color = "naspa_spi3")) +
   #geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
-  #           mapping = aes(y = spi5, color = "naspa_spi5")) +
-  labs(title = paste0("3months ave. flow,  OKC,OK"),
+  #          mapping = aes(y = spi5, color = "naspa_spi5")) +
+  labs(title = paste0("3months ave. flow, OKC,OK"),
        y = "3-months Precip(mm/m)",
        color = "data") +
   theme_classic(base_size = 18)
 
-p
+p + stat_summary(fun = "mean", colour = "black", size = 2, geom = "line")
 
-ggsave(p,filename = paste0(output_path,"1940precip,OKC.png"),width = 6, height = 4 )
-
+ggsave(p,filename = paste0(output_path,"300precip,OKC.png"),width = 6, height = 4 )
 
 readRDS(file = paste0(output_path,"predictedpreip.rds"))
 #Need naspa_df from the file"building_naspa_precip"
 p <- ggplot(predicted_df %>% 
-              filter(year(date) > 900 & year(date) < 1000),
-            aes(x = date, y= precip, color ="predicted")) + 
-  geom_line() +
+              filter(year(date) > 900 & year(date) < 1000 & month == 7),
+            aes(x = date, y= precip)) + 
+  geom_line(aes(group = iter), color = "skyblue3") +
   geom_point(naspa_df %>%
               filter(year(date) > 900 & year(date) < 1000), 
              mapping = aes(y = precip, color = "naspa")) +
@@ -296,7 +300,7 @@ p <- ggplot(predicted_df %>%
        y = "3months ave.prcp(mm/m)") +
   scale_color_brewer(palette = "Set1") +
   theme_classic(base_size = 18)
-p
-ggsave(p,filename = paste0(output_path,"naspa900.png"),width = 6, height = 4 )
+p <- p + stat_summary(fun = "mean", colour = "black", size = 2, geom = "line")
+ggsave(p,filename = paste0(output_path,"MJJ900.png"),width = 6, height = 4 )
 
 
