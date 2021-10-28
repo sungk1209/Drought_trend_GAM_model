@@ -137,7 +137,7 @@ library_df <- library_df %>% select(-i)
 
 n_neighbors <- 10
 
-for (year_i in c(300:2000)){ 
+for (year_i in c(300:2016)){ 
 
 #### Eventually put this in a loop through years
 date_subset <- seq(as.Date(paste0(year_i,"-08-01")),
@@ -221,7 +221,7 @@ p <-ggplot(temp2, aes(x=date, y=spi3)) +
 p
 ggsave(p,filename = paste0(output_path,year_i,"1930_5OKC.png"))
 
-p <-ggplot(predicted_df %>% filter(year(date) > 1900 & year(date) < 1930), 
+p <-ggplot(predict_df %>% filter(year(date) > 1900 & year(date) < 1930), 
            aes(x=date, y=spi3)) +
   geom_line(aes(colour = "black")) + 
   geom_line(data = gpcc_df %>% filter(year(date) > 1900 & year(date) < 1930),
@@ -234,7 +234,7 @@ p
 ggsave(p,filename = paste0(output_path,"1900-1930 Tempa.png"),width = 6, height = 4)
 
 p <- ggplot(predicted_df %>% filter(year(date) > 1800 & month(date) == 7),
-            aes(x = date, y=spi3,  color = iter)) + 
+            aes(x = date, y=spi3,  colour = iter)) + 
   geom_line() + scale_colour_brewer(type = "seq", aesthetics = "colour") +
   geom_point(naspa_spi3 %>% filter(year > 1800 & month == 7), 
             mapping = aes(y = spi3, color = "naspa")) +
@@ -246,7 +246,7 @@ p
 
 ggsave(p,filename = paste0(output_path,"MJJ","OKC2.png"),width = 6, height = 4)
 
-p <- ggplot(predicted_df %>% filter(year(date) > 1990 & year(date) < 2000) , 
+p <- ggplot(predict_df %>% filter(year(date) > 1990 & year(date) < 2000) , 
            aes(x=date, y=spi3)) +
   geom_line() +
   geom_line(data = gpcc_df%>% filter(year(date) > 1990 &year(date) < 2000),
@@ -267,40 +267,41 @@ ggsave(p,filename = paste0(output_path,"1990 years,OKC.png"),width = 6, height =
 ###                     plotting flow                 #####
 ###########################################################
 p <-ggplot(predicted_df %>% 
-             filter(year(date) > 300 & year(date) < 310),
+             filter(year(date) > 2000 & year(date) < 2016),
            aes(x=date, y= precip)) +
   geom_line(aes(group = iter), color = "skyblue3") +
   scale_color_brewer(type = "seq") +
-  #geom_line(data = gpcc_df %>% filter(year(date) > 1940 & year(date) < 1950),
-  #          aes(x = date, y = precip, color = "GPCC" ), color = "red",size = 1.0) +
+  geom_line(data = gpcc_df %>% filter(year(date) > 2000 & year(date) < 2016),
+            aes(x = date, y = precip, color = "GPCC" ), color = "red",size = 1.0) +
   #geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
   #           mapping = aes(y = spi3, color = "naspa_spi3")) +
   #geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
   #          mapping = aes(y = spi5, color = "naspa_spi5")) +
-  labs(title = paste0("3months ave. flow, OKC,OK"),
+  labs(title = paste0("3months ave.mean and all nns, OKC,OK"),
        y = "3-months Precip(mm/m)",
        color = "data") +
   theme_classic(base_size = 18)
 
-p + stat_summary(fun = "mean", colour = "black", size = 2, geom = "line")
+p <- p + stat_summary(fun = "mean", colour = "black", size = 1, geom = "line")
 
-ggsave(p,filename = paste0(output_path,"300precip,OKC.png"),width = 6, height = 4 )
+
+ggsave(p,filename = paste0(output_path,"2000precip,OKC.png"),width = 6, height = 4 )
 
 readRDS(file = paste0(output_path,"predictedpreip.rds"))
 #Need naspa_df from the file"building_naspa_precip"
 p <- ggplot(predicted_df %>% 
-              filter(year(date) > 900 & year(date) < 1000 & month == 7),
+              filter(year(date) > 1950 & year(date) < 2020 & month == 3),
             aes(x = date, y= precip)) + 
   geom_line(aes(group = iter), color = "skyblue3") +
-  geom_point(naspa_df %>%
-              filter(year(date) > 900 & year(date) < 1000), 
-             mapping = aes(y = precip, color = "naspa")) +
- # geom_line(data = gpcc_df %>%filter(month(date) == 7), aes(y = precip,color = "gpcc")) +
-  labs(title ="MJJ precip, naspa and predicted",
+  #geom_point(naspa_df %>%
+  #            filter(year(date) > 900 & year(date) < 1000), 
+  #           mapping = aes(y = precip, color = "naspa")) +
+  geom_line(data = gpcc_df %>%filter(year(date) > 1950, month(date) == 3), aes(y = precip,color = "gpcc")) +
+  labs(title ="JFM precip, naspa and predicted",
        y = "3months ave.prcp(mm/m)") +
   scale_color_brewer(palette = "Set1") +
   theme_classic(base_size = 18)
-p <- p + stat_summary(fun = "mean", colour = "black", size = 2, geom = "line")
-ggsave(p,filename = paste0(output_path,"MJJ900.png"),width = 6, height = 4 )
+p <- p + stat_summary(fun = "mean", colour = "black", size = 1, geom = "line")
+ggsave(p,filename = paste0(output_path,"JFM1900.png"),width = 6, height = 4 )
 
 
