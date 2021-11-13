@@ -1,0 +1,177 @@
+# *--------------------------------------------------------------------------
+# | PROGRAM NAME: 
+# | FILE NAME: 1.gpcc_and_gam.R
+# | DATE: Oct.02.2021
+# | CREATED BY:  Kay Sung     
+# *--------------------------------------------------------------------------
+# | PURPOSE: -
+# | 
+# | 
+# *--------------------------------------------------------------------------
+require(lubridate)
+require(tidyverse)
+require(dplyr)
+require(ncdf4)
+require(fitdistrplus)
+require(zoo)
+library(RANN)
+select <- dplyr::select
+
+data_path <- "../data"
+output_path <- "../output/"
+
+### Read in
+#warm_spi <- read_tsv("../data/NASPA_WARM_SPI.txt")
+# the txt file is for Oklahoma city
+#naspa_spi3 <- read_tsv("../data/NASPA_Reconstructed_MJJ_0_2016_SPI.txt", skip = 2)%>% 
+#  rename(year = Year, spi3=SPI)
+
+fn_wm <- "NASPA_WARM_SPI.nc"
+short_name <- "pr"
+
+ncdf_df <- data.frame(short_name = c("pr"), 
+                      var_name = c("precipitation_amount"))
+nc_wm <- nc_open(fn_wm)
+print(nc_wm)
+
+var1 <- attributes(nc_wm$var)
+lat_list <- ncvar_get(nc_wm, "lat")
+lon_list <- ncvar_get(nc_wm, "lon")
+date_list <- ncvar_get(nc_wm, "time")
+tm_orig <- as.Date("0000-08-01")
+date_list <- tm_orig %m+% years(date_list)
+
+lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
+lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
+
+var_data_k <- ncvar_get(nc_wm, varid= var1$names[1], start = c(1,lat_col,lon_col), 
+                        count = c(-1,1,1))
+
+yuc <- tibble(date = date_list, 
+              spi3 = var_data_k)
+
+### Add a month column
+naspa_spi3 <- yuc %>% 
+  mutate(year = year(date)) %>%
+  mutate(month = 7) %>%
+  complete(year = seq(0,2016), month = seq(1,12)) %>%
+  mutate(date = as.Date(paste0(year, "-", month, "-15"))) %>%
+  mutate(date = as.Date(ceiling_date(date, "month")-1)) %>%
+  arrange(date)
+
+fn_co <- "NASPA_COOL_SPI.nc"
+
+short_name <- "pr"
+
+nc_co <- nc_open(fn_co)
+print(nc_co)
+
+var1 <- attributes(nc_co$var)
+lat_list <- ncvar_get(nc_co, "lat")
+lon_list <- ncvar_get(nc_co, "lon")
+date_list <- ncvar_get(nc_co, "time")
+tm_orig <- as.Date("0000-04-30")
+date_list <- tm_orig %m+% years(date_list)
+
+lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
+lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
+
+var_data_k <- ncvar_get(nc_co, varid= var1$names[1], start = c(1,lat_col,lon_col), 
+                        count = c(-1,1,1))
+
+yuc <- tibble(date = date_list, 
+              spi5 = var_data_k)
+
+naspa_spi5 <- yuc %>% 	
+  mutate(month = 4) %>%
+  mutate(year = year(date)) %>%
+  complete(year = seq(0,2016), month = seq(1,12)) %>%
+  mutate(date = as.Date(paste0(year, "-", month, "-15"))) %>%
+  mutate(date = as.Date(ceiling_date(date, "month")-1)) %>%
+  arrange(date)
+
+naspa_spi3 <- naspa_spi3 %>%
+  mutate(spi5 = naspa_spi5$spi5)
+
+
+head(naspa_spi3)
+saveRDS(naspa_spi3,file = paste0(output_path,"naspa_spi.rds"))
+
+### SPI-3 3 months equals 3 months
+n_days <- 12
+n_roll <- 3
+
+gpcc <- "../data/precip.mon.total.v7.nc"
+
+nc_gpcc <- nc_open(gpcc)
+print(nc_gpcc)
+
+#gpcc_df: precipitation: total monthly precipitation
+# Columbus: Lat: 39.9612 N, Lon: 82.9988 W
+#loc <- data.frame(site="columbus,co",
+#                  lon=c(-83,-82.5),
+#                  lat= c(39.5,40))
+
+var1 <- attributes(nc_gpcc$var)
+lat_list <- ncvar_get(nc_gpcc, "lat")
+lon_list <- ncvar_get(nc_gpcc, "lon")
+date_list <- ncvar_get(nc_gpcc, "time")
+tm_orig <- as.Date("1800-01-01")
+date_list <- date_list + tm_orig
+
+lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
+lon_col <- which(lon_list > loc$lon[1] + 360 & lon_list < loc$lon[2] + 360)
+
+var_data_j <- ncvar_get(nc_gpcc, varid= var1$names[2], start = c(lon_col,lat_col,1), 
+                        count = c(1,1,-1))
+plot(x = date_list, y = var_data_j, type = 'l')
+
+yup <- tibble(site = loc$site[1], date = date_list, 
+              value = as.numeric(var_data_j))
+
+gpcc_df <- yup %>%
+  mutate(model = "GPCC") %>%
+  mutate(units = "mm/month") %>%
+  mutate(year = year(date)) %>%
+  mutate(month = month(date)) %>%
+  mutate(month_day= paste0(month(date),"-",day(date))) %>%
+  select(date,site, year,month, model, value,units)
+
+n_roll <- 3
+n_roll_min <- 2
+
+gpcc_df <- gpcc_df %>%
+  mutate(roll_mean_3 = rollmeanr(x=value, k=n_roll, fill=NA, na.rm=TRUE)) %>%
+  mutate(roll_mean_3_notna = rollsumr(x=!is.na(value), k=n_roll, fill=NA, na.rm=TRUE)) %>%
+  mutate(precip = case_when(roll_mean_3_notna  > n_roll_min ~ roll_mean_3,
+                            TRUE ~ NA_real_)
+  ) %>%
+  select(-roll_mean_3_notna) %>%
+  mutate(date = ceiling_date(date, "month") - 1) %>%
+  select(date, site, model,precip,units, value) 
+
+n_roll <- 5
+n_roll_min <- 4
+
+gpcc_df <- gpcc_df %>%
+  mutate(roll_mean_5 = rollmeanr(x=value, k=n_roll, fill=NA, na.rm=TRUE)) %>%
+  mutate(roll_mean_3_notna = rollsumr(x=!is.na(value), k=n_roll, fill=NA, na.rm=TRUE)) %>%
+  mutate(precip_5 = case_when(roll_mean_3_notna  > n_roll_min ~ roll_mean_5,
+                              TRUE ~ NA_real_)
+  ) %>%
+  select(-roll_mean_3_notna, -roll_mean_5) %>%
+  filter(precip >0 & precip_5 >0)
+
+gpcc_df <- gpcc_df %>%
+  group_by(month(date)) %>%
+  mutate(shape3 = fitdist(precip, "gamma")$estimate[[1]],
+         rate3 = fitdist(precip, "gamma")$estimate[[2]]) %>%
+  mutate(prob3 = pgamma(precip, shape = shape3, rate = rate3)) %>%
+  mutate(spi3 = qnorm(prob3,mean = 0, sd = 1)) %>%
+  mutate(shape5 = fitdist(precip_5, "gamma")$estimate[[1]],
+         rate5 = fitdist(precip_5, "gamma")$estimate[[2]]) %>%
+  mutate(prob5 = pgamma(precip_5, shape = shape5, rate = rate5)) %>%
+  mutate(spi5 = qnorm(prob5,mean = 0, sd = 1)) %>%
+  ungroup()
+
+saveRDS(gpcc_df,file = paste0(output_path,"gpcc_df.rds"))
