@@ -18,12 +18,12 @@ require(zoo)
 library(RANN)
 select <- dplyr::select
 
-data_path <- "../data"
+data_path <- "../data/"
 output_path <- "../output/"
 
 ### Read in
 
-readRDS(file = paste0(output_path,"gpcc_df.rds"))
+gpcc_df <- readRDS(file = paste0(output_path,"gpcc_df.rds"))
 
 paras<- gpcc_df %>% select(date,shape3, rate3) %>%
   group_by(month(date)) %>%
@@ -42,7 +42,7 @@ library_df <- library_df %>% select(-i)
 
 n_neighbors <- 10
 
-for (year_i in c(300:2015)){ 
+for (year_i in c(begin.y:end.y)){ 
 
 #### Eventually put this in a loop through years
 date_subset <- seq(as.Date(paste0(year_i,"-08-01")),
@@ -56,6 +56,9 @@ naspa_points <- data.frame(spi_thisjuly = naspa_subset$spi3[[1]],
                            spi_nextapr = naspa_subset$spi5[[10]],
                            spi_nextjuly = naspa_subset$spi3[[13]])
 
+if (sum(is.na(naspa_points))>0) {
+  next
+}
 ### Find the k closest points
 #library_df <- library_df %>% select(-i)
 closest <- nn2(data= library_df,
@@ -81,7 +84,7 @@ for(k in seq(1,n_neighbors)){
   #smoothed <- loess(spi3 ~ as.numeric(date),data = naspa_subset_iter)
   #predicted_k <- data.frame(date= date_subset,
   #                         spi3 = predict(smoothed, newdata = naspa_subset$date))
-if(year_i == 300){
+if(year_i == 516){
   predicted_df <- naspa_subset_iter
   
   } else {
@@ -100,7 +103,7 @@ predicted_df <- predicted_df %>%
   mutate(precip = qgamma(prob, shape = shape, rate = rate)) 
 predicted_df$iter <- as.factor(predicted_df$iter)
 
-saveRDS(predicted_df, file = paste0(output_path,"predictedpreip.rds"))
+saveRDS(predicted_df, file = paste0(output_path,loc$site[1],"predictedpreip.rds"))
 
 ###########################################################
 ###                     plotting                      #####
@@ -137,38 +140,8 @@ p
 
 ggsave(p,filename = paste0(output_path,loc$site[1],".png"),width = 6, height = 4)
 
-#p <- ggplot(predicted_df %>% filter(year(date) > 1800 & month(date) == 7),
-#            aes(x = date, y=spi3,  colour = iter)) + 
-#  geom_line() + scale_colour_brewer(type = "seq", aesthetics = "colour") +
-#  geom_point(naspa_spi3 %>% filter(year > 1800 & month == 7), 
-#            mapping = aes(y = spi3, color = "naspa")) +
-#  geom_line(data = gpcc_df%>%filter(month(date) == 7), aes(y = spi3,color = "gpcc")) +
-#  labs(title ="SPI-3 SPI: modeled with naspa,OKC,OK") +
-#  scale_color_brewer(palette = "Set1") +
-#  theme_classic(base_size = 18)
-#p
-
-#ggsave(p,filename = paste0(output_path,"MJJ","OKC2.png"),width = 6, height = 4)
-
-# p <- ggplot(predicted_df %>% filter(year(date) > 1990 & year(date) < 2000) , 
-#            aes(x=date, y=spi3)) +
-#   geom_line() +
-#   geom_line(data = gpcc_df%>% filter(year(date) > 1990 &year(date) < 2000),
-#             aes(y = spi3, color = "GPCC" )) +
-#   
-#   geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
-#              mapping = aes(y = spi3, color = "naspa_spi3")) +
-#   geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
-#              mapping = aes(y = spi5, color = "naspa_spi5")) +
-#   labs(title = paste0("1990-2000 OKC,OK"),
-#        color = "data") +
-#   theme_classic(base_size = 18)
-# 
-# p
-# ggsave(p,filename = paste0(output_path,"1990 years,OKC.png"),width = 6, height = 4 )
-
 ###########################################################
-###                     plotting flow                 #####
+###                  plotting all NNs and neighbors   #####
 ###########################################################
 p <-ggplot(predicted_df %>% 
              filter(year(date) > 1300 & year(date) < 1310),
@@ -194,15 +167,15 @@ ggsave(p,filename = paste0(output_path,loc$site[1],"13precip.png"),width = 6, he
 #readRDS(file = paste0(output_path,"predictedpreip.rds"))
 #Need naspa_df from the file"building_naspa_precip"
 p <- ggplot(predicted_df %>% 
-              filter(year(date) > 1902 & year(date) < 2020 & month == 10),
+              filter(year(date) > 1902 & year(date) < 2020 & month == 4),
             aes(x = date, y= precip)) + 
   geom_line(aes(group = iter), color = "skyblue3") +
   #geom_point(naspa_df %>%
   #            filter(year(date) > 900 & year(date) < 1000), 
   #           mapping = aes(y = precip, color = "naspa")) +
-  geom_line(data = gpcc_df %>%filter(year(date) > 1902, month(date) == 10), 
+  geom_line(data = gpcc_df %>%filter(year(date) > 1902, month(date) == 4), 
             aes(y = precip,color = "gpcc"),size = 0.8) +
-  labs(title ="ASO precip, naspa and predicted",
+  labs(title ="MJJ precip, naspa and predicted",
        y = "3months ave.prcp(mm/m)") +
   scale_color_brewer(palette = "Set1") +
   theme_classic(base_size = 18)

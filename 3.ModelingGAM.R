@@ -27,7 +27,6 @@ output_path <- "../output/"
 instrument_df <- readRDS(file =paste0(output_path,"instrument_df.rds"))
 predicted_df <- readRDS(file = paste0(output_path,"predictedpreip.rds"))
 
-
 inst_df<- instrument_df %>%
   mutate(month = month(date))
 

@@ -17,7 +17,7 @@ require(zoo)
 library(RANN)
 select <- dplyr::select
 
-data_path <- "../data"
+data_path <- "../data/"
 output_path <- "../output/"
 
 ### Read in
@@ -31,7 +31,7 @@ short_name <- "pr"
 
 ncdf_df <- data.frame(short_name = c("pr"), 
                       var_name = c("precipitation_amount"))
-nc_wm <- nc_open(fn_wm)
+nc_wm <- nc_open(paste0(data_path,fn_wm))
 print(nc_wm)
 
 var1 <- attributes(nc_wm$var)
@@ -47,14 +47,16 @@ lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
 var_data_k <- ncvar_get(nc_wm, varid= var1$names[1], start = c(1,lat_col,lon_col), 
                         count = c(-1,1,1))
 
-yuc <- tibble(date = date_list, 
-              spi3 = var_data_k)
+yuc <- tibble(date = date_list,spi3 = var_data_k) %>%
+  drop_na()
 
+begin.y <- min(year(yuc$date))
+end.y <- max(year(yuc$date))
 ### Add a month column
 naspa_spi3 <- yuc %>% 
   mutate(year = year(date)) %>%
   mutate(month = 7) %>%
-  complete(year = seq(0,2016), month = seq(1,12)) %>%
+  complete(year = seq(begin.y,end.y), month = seq(1,12)) %>%
   mutate(date = as.Date(paste0(year, "-", month, "-15"))) %>%
   mutate(date = as.Date(ceiling_date(date, "month")-1)) %>%
   arrange(date)
@@ -63,7 +65,7 @@ fn_co <- "NASPA_COOL_SPI.nc"
 
 short_name <- "pr"
 
-nc_co <- nc_open(fn_co)
+nc_co <- nc_open(paste0(data_path,fn_co))
 print(nc_co)
 
 var1 <- attributes(nc_co$var)
@@ -80,12 +82,15 @@ var_data_k <- ncvar_get(nc_co, varid= var1$names[1], start = c(1,lat_col,lon_col
                         count = c(-1,1,1))
 
 yuc <- tibble(date = date_list, 
-              spi5 = var_data_k)
+              spi5 = var_data_k) %>%
+  drop_na()
+
+
 
 naspa_spi5 <- yuc %>% 	
   mutate(month = 4) %>%
   mutate(year = year(date)) %>%
-  complete(year = seq(0,2016), month = seq(1,12)) %>%
+  complete(year = seq(begin.y,end.y), month = seq(1,12)) %>%
   mutate(date = as.Date(paste0(year, "-", month, "-15"))) %>%
   mutate(date = as.Date(ceiling_date(date, "month")-1)) %>%
   arrange(date)
@@ -175,3 +180,4 @@ gpcc_df <- gpcc_df %>%
   ungroup()
 
 saveRDS(gpcc_df,file = paste0(output_path,"gpcc_df.rds"))
+

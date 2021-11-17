@@ -22,7 +22,7 @@ require(dplyr)
 
 select <- dplyr::select
 ### Path for Data and Output	
-data_path <- "../data"
+data_path <- "../data/"
 output_path <- "../output/"
 
 ### Set up output folders
@@ -34,6 +34,10 @@ output_path <- "../output/"
 # San Diego: 32.7157° N, 117.1611° W
 # San Antonio 29.4814578N,99.073463 W
 
+loc <- data.frame(site = "COL_OH",
+					lon = c(-83,-82.5),
+					lat = c(39.5, 40))
+
 #loc <- data.frame(site="OKC,OK",
 #                  lon=c(-98,-97.5),
 #                  lat= c(35.0,35.5))
@@ -43,9 +47,8 @@ output_path <- "../output/"
 #                  lat=c(33.50,34.00))
 
 loc <- data.frame(site="SanJuan,CO",
-                  lon= c(-106.5,-106.0),
+                 lon= c(-106.5,-106.0),
                   lat=c(37.50,38.00))
-
 
 
 ncdf_df <- data.frame(short_name = c("pr"))
@@ -178,10 +181,10 @@ instrument_df <- rbind(gridmet_df,cru_df)
 instrument_df <- instrument_df %>%
   arrange(date) %>%
   drop_na(precip) 
-saveRDS(instrument_df,file =paste0(output_path,"instrument_df.rds"))
+saveRDS(instrument_df,file =paste0(output_path,loc$site[1],"instrument_df.rds"))
 
-p <- ggplot(data = instrument_df) + 
-  geom_line(aes(x=year, y=precip, group = model, colour = model)) +
+p <- ggplot(data = instrument_df %>%filter(month(date) == 1)) + 
+  geom_line(aes(x=date, y=precip, group = model, colour = model)) +
   labs(title =  loc$site[1],
        y = "3 months ave. precip.(mm)") +
   theme_classic(base_size = 30)

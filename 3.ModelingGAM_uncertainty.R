@@ -29,9 +29,9 @@ select <- dplyr::select
 data_path <- "../data"
 output_path <- "../output/"
 
-inst_df <- readRDS(file =paste0(output_path,"instrument_df.rds"))
-naspa_df <- readRDS(file = paste0(output_path,"predictedpreip.rds"))
-pred_df<- readRDS(file = paste0(output_path,"pred_df.rds"))
+inst_df <- readRDS(file =paste0(output_path,loc$site[1],"instrument_df.rds"))
+naspa_df <- readRDS(file = paste0(output_path,loc$site[1],"predictedpreip.rds"))
+pred_df<- readRDS(file = paste0(output_path,loc$site[1],"pred_df.rds"))
 
 naspa_df <- naspa_df %>%
   group_by(date) %>%
@@ -46,7 +46,7 @@ naspa_df <- naspa_df %>%
   mutate(variable = "predicted") %>%
   mutate(model = "naspa")%>%
   mutate(units = "mm/month") %>%
-  mutate(site = "SanJuan,CO") %>%
+  mutate(site = "COL-OH") %>%
   select(date,site, year, variable, model , precip, units, month)
 
 prcp_df <- as.data.frame(rbind(inst_df,naspa_df,pred_df)) %>%
@@ -66,7 +66,7 @@ p <- ggplot(data=prcp_df %>% filter(year >1900),
   theme_classic(base_size = 20)
 
 p
-ggsave(filename = paste0(output_path,loc$site[1],"JASprcp.png"),plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename = paste0(output_path,loc$site[1],"prcp.png"),plot = p, width =12.5, height = 8, dpi = 300)
 
 ##############################################################
 ####                      Modeling                       #####
@@ -74,14 +74,12 @@ ggsave(filename = paste0(output_path,loc$site[1],"JASprcp.png"),plot = p, width 
 nknot <- (max(prcp_df$year) - min(prcp_df$year) + 1)/30
 nknot <- round(nknot) + 1
 
-data<- prcp_pos %>% filter(model == "GFDL-CM4")
-
 start_time <- Sys.time()
 gam_fit <- gam(list(
   precip ~ model + s(month, by = model, bs = "cc", k = 6) + 
-    te(year, month, bs = c("cr","cc"), k = c(30,6)), 
+    te(year, month, bs = c("cr","cc"), k = c(20,6)), 
   ~model + s(month, by = model, bs = "cc", k = 6) + 
-    te(year, month, bs = c("cr","cc"), k = c(30,6))),
+    te(year, month, bs = c("cr","cc"), k = c(20,6))),
   family=gammals, link=list("identity","log"), data = prcp_pos)
 end_time <- Sys.time()
 end_time - start_time
@@ -146,7 +144,7 @@ pred_df <- data.frame(expand.grid(year = seq(min_naspa,max_naspa),month = seq(1,
   bind_rows(data.frame(expand.grid(year = seq(min_gcm,max_gcm),month = seq(1,12)), model = "GFDL-CM4", plot_model = "GFDL-CM4"))
 
 ### Make predictions based on this
-GAM_predict <- predict(gam_fit, newdata = gridmet_pred_df, se.fit = TRUE, type = "response")
+GAM_predict <- predict(gam_fit, newdata = Gridmet_pred_df, se.fit = TRUE, type = "response")
 
 GAM_predict  <- GAM_predict %>%
   data.frame() %>%
@@ -181,7 +179,7 @@ absDev <- abs(sweep(simDev, 1, GAM_predict$se.fit.1, FUN = "/"))
 masd <- apply(absDev, 2L, max)
 crit <- quantile(masd, prob = 0.95, type = 8)
 
-modeled_df <- transform(pred_df,
+modeled_df <- transform(gridmet_pred_df,
                         modGI = GAM_predict$est_mean,
                         lower = qgamma(0.025, shape = GAM_predict$est_shape,
                                        scale = GAM_predict$est_scale),
@@ -196,12 +194,11 @@ modeled_df <- transform(pred_df,
 modeled_df <- modeled_df %>%
   mutate(date = as.Date(paste0(year,"-",month,"-01")))
 
-
 #Plot annual data
 basis_func_palette = colorblind_pal()(8)
 basis_func_palette = basis_func_palette[-c(1,5)]
 
-tmonth <- 2
+tmonth <- 7
 p <- ggplot(data=prcp_pos %>% filter(year > 200 & month == tmonth), aes(x=year, group=model,colour = model)) +
   geom_line(aes(y=precip)) +
   geom_ribbon(data = modeled_df%>%filter(year > 200 & month == tmonth), aes(ymin= lowp,
@@ -212,22 +209,22 @@ p <- ggplot(data=prcp_pos %>% filter(year > 200 & month == tmonth), aes(x=year, 
                                                           ymax= upper), alpha = 0.25, fill = "black") +
    geom_line(data = modeled_df%>%filter(year > 200 & month == tmonth), aes(y=modGI)) +
    # facet_wrap(~month) +
-  labs(title = paste0("DJF"," modeled"),
+  labs(title = paste0("MJJ"," modeled"),
        subtitle = "",
        x="year",y="3-Month ave.precip(mm)", size = 10)+
     theme_classic(base_size = 20)
 
 p
 filename <- paste0(tmonth,"lterm",loc$site[1])
-ggsave(filename = paste0(output_path,filename,".png"),plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename = paste0(output_path,filename,"1.png"),plot = p, width =12.5, height = 8, dpi = 300)
 ggsave(filename = paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
 #Plot monthly data
-tyear <- seq(1900,1905)
+tyear <- seq(2000,2020)
 p <- ggplot(data=prcp_pos %>%filter(year %in%  tyear), aes(x= date, group=model,colour = model)) +
     #geom_ribbon(data = modeled_df %>% filter(year %in%  tyear), 
     #            aes(ymin=lower,ymax=upper), alpha=0.25) +
-  geom_line(data = modeled_df%>% filter(year %in%  tyear), aes(y=modGI, group = model, colour = model)) +
+  #geom_line(data = modeled_df%>% filter(year %in%  tyear), aes(y=modGI, group = model, colour = model)) +
   geom_line(aes(y=precip), alpha = 0.8) +
   #facet_wrap(~year) +
  # scale_colour_brewer(palette = "Set1", aesthetics = "colour", name = "Data set") +
@@ -257,8 +254,28 @@ p <- ggplot(modeled_df, aes(x= month, y = year)) %>%
 p	
 filename <- paste0("raster",loc$site[1])
 ggsave(filename = paste0(filename,".png"),plot = p, width =12.5, height = 8, dpi = 300)
+####
+
+tyear <- seq(500,2020,100)
+
+p <- ggplot(data= modeled_df %>% filter ( year %in% tyear), 
+            aes(x = month, y = modGI, group = interaction(year,plot_model), color = year)) +
+  geom_line(se = FALSE) +
+  #geom_ribbon(data = modeled_df %>% filter(year %in%  tyear), 
+  #            aes(ymin=lower,ymax=upper), alpha=0.25) +
+  #geom_line(data = modeled_df%>% filter(year %in%  tyear), aes(y=modGI, group = model, colour = model)) +
+  #facet_wrap(~year) +
+  scale_colour_viridis() +
+  labs(title = paste("Average precipitation"),
+      y="3-Month ave.precip(mm)", size = 14)+
+    theme_classic(base_size = 20)
+
+p
 
 
+filename <- paste0(tyear[1], "allseason","modeled",loc$site[1])
+ggsave(filename = paste0(filename,".png"),plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename = paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
 
 
