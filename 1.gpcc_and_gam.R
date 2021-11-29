@@ -51,7 +51,7 @@ yuc <- tibble(date = date_list,spi3 = var_data_k) %>%
   drop_na()
 
 begin.y <- min(year(yuc$date))
-end.y <- max(year(yuc$date))
+end.y <- max(year(yuc$date)) -1
 ### Add a month column
 naspa_spi3 <- yuc %>% 
   mutate(year = year(date)) %>%
@@ -85,8 +85,6 @@ yuc <- tibble(date = date_list,
               spi5 = var_data_k) %>%
   drop_na()
 
-
-
 naspa_spi5 <- yuc %>% 	
   mutate(month = 4) %>%
   mutate(year = year(date)) %>%
@@ -101,8 +99,10 @@ naspa_spi3 <- naspa_spi3 %>%
 
 head(naspa_spi3)
 saveRDS(naspa_spi3,file = paste0(output_path,"naspa_spi.rds"))
-
-### SPI-3 3 months equals 3 months
+saveRDS(naspa_spi3,file = paste0(output.p,"/naspa_spi.rds"))
+#############################################################
+### GPCC
+##################################################################
 n_days <- 12
 n_roll <- 3
 
@@ -137,10 +137,7 @@ yup <- tibble(site = loc$site[1], date = date_list,
 gpcc_df <- yup %>%
   mutate(model = "GPCC") %>%
   mutate(units = "mm/month") %>%
-  mutate(year = year(date)) %>%
-  mutate(month = month(date)) %>%
-  mutate(month_day= paste0(month(date),"-",day(date))) %>%
-  select(date,site, year,month, model, value,units)
+  select(date,site, model, value,units)
 
 n_roll <- 3
 n_roll_min <- 2
@@ -179,5 +176,7 @@ gpcc_df <- gpcc_df %>%
   mutate(spi5 = qnorm(prob5,mean = 0, sd = 1)) %>%
   ungroup()
 
-saveRDS(gpcc_df,file = paste0(output_path,"gpcc_df.rds"))
+saveRDS(gpcc_df,file = paste0(output.p,"/gpcc_df.rds"))
+
+
 

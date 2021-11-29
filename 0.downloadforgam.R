@@ -34,19 +34,22 @@ output_path <- "../output/"
 # San Diego: 32.7157° N, 117.1611° W
 # San Antonio 29.4814578N,99.073463 W
 
-loc <- data.frame(site = "COL_OH",
-					lon = c(-83,-82.5),
-					lat = c(39.5, 40))
+#loc <- data.frame(site = "COL_OH",
+#					lon = c(-83,-82.5),
+#					lat = c(39.5, 40))
 
 #loc <- data.frame(site="OKC,OK",
 #                  lon=c(-98,-97.5),
 #                  lat= c(35.0,35.5))
 
+dir.create(file.path(output_path,loc$site[1]))
+output.p <- file.path(output_path, loc$site[1])
+
 #loc <- data.frame(site="phoenix,AZ",
 #                  lon= c(-112.5,-112.0),
 #                  lat=c(33.50,34.00))
 
-loc <- data.frame(site="SanJuan,CO",
+loc <- data.frame(site="SanJuan_CO",
                  lon= c(-106.5,-106.0),
                   lat=c(37.50,38.00))
 
@@ -181,18 +184,19 @@ instrument_df <- rbind(gridmet_df,cru_df)
 instrument_df <- instrument_df %>%
   arrange(date) %>%
   drop_na(precip) 
-saveRDS(instrument_df,file =paste0(output_path,loc$site[1],"instrument_df.rds"))
+saveRDS(instrument_df,file =paste0(output.p,"/instrument_df.rds"))
 
-p <- ggplot(data = instrument_df %>%filter(month(date) == 1)) + 
+p <- ggplot(data = instrument_df) + 
   geom_line(aes(x=date, y=precip, group = model, colour = model)) +
+  scale_color_manual(values = c("steelblue3", "orangered2")) +
   labs(title =  loc$site[1],
-       y = "3 months ave. precip.(mm)") +
+       y = "Mean prcp.(mm/month)") +
   theme_classic(base_size = 30)
 
 p
-filename <- paste0(loc$site[1],"precip_inst")
-ggsave(filename =paste0(filename,"3.png"), plot = p, width =12.5, height = 8, dpi = 300)
-ggsave(filename =paste0(filename,"3.svg"), plot = p, width =12.5, height = 8, dpi = 300)
+filename <- paste0(output.p,"/Pinst")
+ggsave(filename =paste0(filename,".png"), plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename =paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
 
 

@@ -18,12 +18,13 @@ require(zoo)
 library(RANN)
 select <- dplyr::select
 
-data_path <- "../data/"
-output_path <- "../output/"
+data_path <- "../data"
+output_path <- "../output"
+output.p <- file.path(output_path, loc$site[1])
 
 ### Read in
 
-gpcc_df <- readRDS(file = paste0(output_path,"gpcc_df.rds"))
+gpcc_df <- readRDS(file = paste0(output.p,"/gpcc_df.rds"))
 
 paras<- gpcc_df %>% select(date,shape3, rate3) %>%
   group_by(month(date)) %>%
@@ -56,9 +57,9 @@ naspa_points <- data.frame(spi_thisjuly = naspa_subset$spi3[[1]],
                            spi_nextapr = naspa_subset$spi5[[10]],
                            spi_nextjuly = naspa_subset$spi3[[13]])
 
-if (sum(is.na(naspa_points))>0) {
-  next
-}
+#if (sum(is.na(naspa_points))>0) {
+#  next
+#}
 ### Find the k closest points
 #library_df <- library_df %>% select(-i)
 closest <- nn2(data= library_df,
@@ -84,7 +85,7 @@ for(k in seq(1,n_neighbors)){
   #smoothed <- loess(spi3 ~ as.numeric(date),data = naspa_subset_iter)
   #predicted_k <- data.frame(date= date_subset,
   #                         spi3 = predict(smoothed, newdata = naspa_subset$date))
-if(year_i == 516){
+if(year_i == begin.y){
   predicted_df <- naspa_subset_iter
   
   } else {
@@ -103,7 +104,7 @@ predicted_df <- predicted_df %>%
   mutate(precip = qgamma(prob, shape = shape, rate = rate)) 
 predicted_df$iter <- as.factor(predicted_df$iter)
 
-saveRDS(predicted_df, file = paste0(output_path,loc$site[1],"predictedpreip.rds"))
+saveRDS(predicted_df, file = paste0(output.p,"/pre_naspa.rds"))
 
 ###########################################################
 ###                     plotting                      #####
@@ -143,44 +144,41 @@ ggsave(p,filename = paste0(output_path,loc$site[1],".png"),width = 6, height = 4
 ###########################################################
 ###                  plotting all NNs and neighbors   #####
 ###########################################################
-p <-ggplot(predicted_df %>% 
-             filter(year(date) > 1300 & year(date) < 1310),
-           aes(x=date, y= precip)) +
-  geom_line(aes(group = iter), color = "skyblue3") +
-  scale_color_brewer(type = "seq") +
-  geom_line(data = gpcc_df %>% filter(year(date) > 1300 & year(date) < 1310),
-            aes(x = date, y = precip, color = "GPCC" ), color = "red",size = 1.0) +
-  #geom_point(naspa_spi3 %>% filter(year > 1990 & year  < 2000 & month == 7), 
-  #           mapping = aes(y = spi3, color = "naspa_spi3")) +
-  #geom_point(naspa_spi5 %>% filter(year > 1990 & year  < 2000 & month == 4), 
-  #          mapping = aes(y = spi5, color = "naspa_spi5")) +
+tyear <- seq(1930,1950)
+p <-ggplot(predicted_df %>% filter(year(date) %in% tyear),
+           aes(x=date)) +
+  geom_line(aes(y = precip, group = iter, color = iter, alpha = 0.6), size = 0.8) +
+  geom_line(data = gpcc_df %>% filter(year(date) %in% tyear),
+            aes(x = date, y = precip, color = "GPCC") ) +
+  scale_color_manual(values = c("orangered2",rep("grey76",10))) +
   labs(title = paste0("3months ave.mean and all NNs"),
-       y = "3-months Precip(mm/m)",
+       y = "3-months Prcp.(mm/month)",
        color = "data") +
-  theme_classic(base_size = 18)
+  theme_classic(base_size = 20)
 
-p <- p + stat_summary(fun = "mean", colour = "black", size = 1, geom = "line")
+p <- p + stat_summary(aes(y = precip),fun = "mean", colour = "green4", geom = "line")
 p
 
-ggsave(p,filename = paste0(output_path,loc$site[1],"13precip.png"),width = 6, height = 4 )
+ggsave(p,filename = paste0(output.p,"/",tyear[1],"ds_gpcc.png"),width = 10, height = 6 )
+ggsave(p,filename = paste0(output.p,"/",tyear[1],"ds_gpcc.svg"),width = 10, height = 6 )
 
-#readRDS(file = paste0(output_path,"predictedpreip.rds"))
-#Need naspa_df from the file"building_naspa_precip"
-p <- ggplot(predicted_df %>% 
-              filter(year(date) > 1902 & year(date) < 2020 & month == 4),
-            aes(x = date, y= precip)) + 
-  geom_line(aes(group = iter), color = "skyblue3") +
-  #geom_point(naspa_df %>%
-  #            filter(year(date) > 900 & year(date) < 1000), 
-  #           mapping = aes(y = precip, color = "naspa")) +
-  geom_line(data = gpcc_df %>%filter(year(date) > 1902, month(date) == 4), 
-            aes(y = precip,color = "gpcc"),size = 0.8) +
-  labs(title ="MJJ precip, naspa and predicted",
-       y = "3months ave.prcp(mm/m)") +
-  scale_color_brewer(palette = "Set1") +
-  theme_classic(base_size = 18)
-p <- p + stat_summary(fun = "mean", colour = "black", size = 1.5, geom = "line")
+tyear <- seq(1900,2020)
+tmonth <- 10
+
+p <-ggplot(predicted_df %>% filter(year(date) %in% tyear & month(date) == tmonth),
+           aes(x=date)) +
+  geom_line(aes(y = precip, group = iter, color = iter, alpha = 0.6), size = 0.8) +
+  geom_line(data = gpcc_df %>% filter(year(date) %in% tyear & month(date) == tmonth),
+            aes(x = date, y = precip, color = "GPCC") ) +
+  scale_color_manual(values = c("orangered2",rep("grey76",10))) +
+  labs(title = paste0("3months ave.mean and all NNs"),
+       y = "3-months Prcp.(mm/month)") +
+  theme_classic(base_size = 12)
+
+p <- p + stat_summary(aes(y = precip),fun = "mean", colour = "green4", geom = "line")
 p
-ggsave(p,filename = paste0(output_path,loc$site[1],"10.png"),width = 6, height = 4 )
+
+ggsave(p,filename = paste0(output.p,"/",tmonth,"month_ds.png"),width = 6, height = 4)
+ggsave(p,filename = paste0(output.p,"/",tmonth,"month_ds.svg"),width = 6, height = 4)
 
 
