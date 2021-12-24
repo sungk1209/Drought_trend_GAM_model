@@ -25,14 +25,13 @@ select <- dplyr::select
 data_path <- "../data/"
 output_path <- "../output/"
 
-### Set up output folders
-#dir.create(write_output_path, recursive=TRUE, showWarnings = FALSE)
 ##set up the location
 #find the row and column 
 # Columbus: Lat: 39.9612 N, Lon: 82.9988 W
 # Oklahoma city : 35.4676° N, 97.5164° 
 # San Diego: 32.7157° N, 117.1611° W
 # San Antonio 29.4814578N,99.073463 W
+<<<<<<< Updated upstream
 
 loc <- data.frame(site = "COL_OH",
 					lon = c(-83,-82.5),
@@ -49,7 +48,21 @@ loc <- data.frame(site = "COL_OH",
 loc <- data.frame(site="SanJuan,CO",
                  lon= c(-106.5,-106.0),
                   lat=c(37.50,38.00))
+=======
+#loc <- data.frame(site="SanJuan_CO",
+#                 lon= c(-106.5,-106.0),
+#                  lat=c(37.50,38.00))
+#loc <- data.frame(site = "COL_OH",
+#					lon = c(-83,-82.5),
+#					lat = c(39.5, 40))
 
+
+>>>>>>> Stashed changes
+
+######################################################################
+#1. Download Gridmet data
+##########################################################################3
+inst_download <- function(loc){
 
 ncdf_df <- data.frame(short_name = c("pr"))
 
@@ -57,9 +70,6 @@ ncdf_df <- ncdf_df %>%
   mutate(url = paste0('http://thredds-prod.nkn.uidaho.edu:8080/thredds/dodsC/agg_met_',short_name, 
                       '_1979_CurrentYear_CONUS.nc#fillmismatch'))
 
-######################################################################
-#1. Download Gridmet data
-##########################################################################3
 
 ### Open the NCDF file
 nc_file <- nc_open(ncdf_df$url)
@@ -185,16 +195,27 @@ saveRDS(instrument_df,file =paste0(output_path,loc$site[1],"instrument_df.rds"))
 
 p <- ggplot(data = instrument_df %>%filter(month(date) == 1)) + 
   geom_line(aes(x=date, y=precip, group = model, colour = model)) +
+<<<<<<< Updated upstream
+=======
+  scale_color_manual(values = c("#1A3FD4", "orangered2")) +
+>>>>>>> Stashed changes
   labs(title =  loc$site[1],
        y = "3 months ave. precip.(mm)") +
   theme_classic(base_size = 30)
 
+<<<<<<< Updated upstream
 p
 filename <- paste0(loc$site[1],"precip_inst")
 ggsave(filename =paste0(filename,"3.png"), plot = p, width =12.5, height = 8, dpi = 300)
 ggsave(filename =paste0(filename,"3.svg"), plot = p, width =12.5, height = 8, dpi = 300)
+=======
+filename <- paste0(output.p,"/Pinst")
+ggsave(filename =paste0(filename,".png"), plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename =paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
+>>>>>>> Stashed changes
 
-
+return()
+}
 
 ###Discarded
 

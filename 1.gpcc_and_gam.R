@@ -20,12 +20,8 @@ select <- dplyr::select
 data_path <- "../data/"
 output_path <- "../output/"
 
-### Read in
-#warm_spi <- read_tsv("../data/NASPA_WARM_SPI.txt")
-# the txt file is for Oklahoma city
-#naspa_spi3 <- read_tsv("../data/NASPA_Reconstructed_MJJ_0_2016_SPI.txt", skip = 2)%>% 
-#  rename(year = Year, spi3=SPI)
-
+naspa_download <- function(loc){
+  
 fn_wm <- "NASPA_WARM_SPI.nc"
 short_name <- "pr"
 
@@ -51,7 +47,12 @@ yuc <- tibble(date = date_list,spi3 = var_data_k) %>%
   drop_na()
 
 begin.y <- min(year(yuc$date))
+<<<<<<< Updated upstream
 end.y <- max(year(yuc$date))
+=======
+end.y <- max(year(yuc$date)) -1
+yrs <- list(begin.y, end.y)
+>>>>>>> Stashed changes
 ### Add a month column
 naspa_spi3 <- yuc %>% 
   mutate(year = year(date)) %>%
@@ -100,9 +101,17 @@ naspa_spi3 <- naspa_spi3 %>%
 
 
 head(naspa_spi3)
+<<<<<<< Updated upstream
 saveRDS(naspa_spi3,file = paste0(output_path,"naspa_spi.rds"))
 
 ### SPI-3 3 months equals 3 months
+=======
+
+saveRDS(naspa_spi3,file = paste0(output.p,"/naspa_spi3.rds"))
+#############################################################
+### GPCC
+##################################################################
+>>>>>>> Stashed changes
 n_days <- 12
 n_roll <- 3
 
@@ -179,5 +188,12 @@ gpcc_df <- gpcc_df %>%
   mutate(spi5 = qnorm(prob5,mean = 0, sd = 1)) %>%
   ungroup()
 
+<<<<<<< Updated upstream
 saveRDS(gpcc_df,file = paste0(output_path,"gpcc_df.rds"))
+=======
+saveRDS(gpcc_df,file = paste0(output.p,"/gpcc_df.rds"))
+return(yrs)
+}
+
+>>>>>>> Stashed changes
 
