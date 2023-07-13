@@ -67,16 +67,6 @@ site_list[14] <- list(data.frame(site="Roe_NM",
                                  lat=c(31.0,31.50)))
 
 
-for (j in seq(1, length(site_list))){
-  loc <- site_list[[j]]
-  dir.create(file.path(output_path, loc$site[1]), recursive = FALSE)
-  output.p <- file.path(output_path, loc$site[1])
-  inst_download(loc)
-  yrs<- naspa_download(loc)
-  knn_result <- knn(loc)
-  GI_model(loc)
-  plot_model(loc)
-  }
 ####################################################
 ############Read R2 at each location 
 ###################################################
@@ -134,19 +124,112 @@ site_df <- site_df %>%
 
 write.csv(site_df,paste0(output_path,"cvsq.csv"))
 
+for (j in seq(1:14)) {
+  
+  loc <- site_list[[j]]
+  output.p <- file.path(output_path, loc$site[1])
+  
+  inst_df <- readRDS(file =paste0(output.p,"/instrument_df.rds"))
+  naspa_df <- readRDS(file = paste0(output.p,"/pre_naspa.rds"))
+  gpcc_df <- readRDS(file = paste0(output.p,"/gpcc_df.rds"))
+  naspa_df <- naspa_df %>%
+    group_by(date) %>%
+    summarize(precip = mean(precip, na.rm = TRUE))
+  
+  naspa_df <- naspa_df %>%
+    mutate(year = year(date)) %>%
+    mutate(month = month(date)) %>%
+    mutate(variable = "predicted") %>%
+    mutate(model = "naspa")%>%
+    mutate(units = "mm/month") %>%
+    mutate(site = loc$site[1]) %>%
+    select(date,site, year, variable, model , precip, units, month)
+  
 size <- dim(gpcc_df)[1]
+
 mape_df <- gpcc_df %>%
   select(date,site, precip) %>%
   rename(pr_gp = precip) %>%
   inner_join(naspa_df, by = "date") %>%
   rename(pr_naspa = precip) %>%
-  mutate(MAE = abs((pr_gp - pr_naspa)/pr_gp)) %>%
+  mutate(
+    MAE = case_when((pr_gp >= 1) ~ (abs(pr_gp - pr_naspa)/pr_gp),
+                      TRUE       ~ (abs(1 - pr_naspa)/1)
+    )
+  )%>%
+  #mutate(MAE = abs((pr_gp - pr_naspa)/pr_gp)) %>%
   mutate(nE = abs((pr_gp - pr_naspa))) %>%
   select(date, site.x,pr_gp, pr_naspa,year, month, MAE,nE) 
+
 mape_df <- mape_df %>%
   group_by(month) %>%
   summarise(SAE = sum(MAE), nSAE = sum(pr_gp), nSE = sum(nE)) %>%
   mutate(MAPE = 100 * SAE/size) %>%
   mutate(nMAE = nSE/nSAE) %>%
+  mutate(site = loc$site[1]) %>%
   ungroup()
+
+month_level <- c("7","8","9","10","11","12","1","2","3",
+                 "4","5","6")
+
+mape_df <- mape_df %>%
+  arrange(factor(month,levels = month_level)) %>%
+  rbind(mape_df %>%filter(month == 7)) 
+  
+mape_df <- mape_df %>% mutate(mon_col = labels)
+
+
+  
+  if (j == 1) {
+    stats_2 <- mape_df
+  }else {
+    stats_2 <- bind_rows(stats_2, mape_df)
+  }
+}
+ stats_ave <- stats_2 %>%
+   group_by(month) %>%
+   summarise(aveMAE = mean(nMAE), aveMAPE = mean(MAPE),
+             var_nMAE = var(nMAE), var_MAPE = var(MAPE),
+             medMAE= median(nMAE),medMAPE = median(nMAE)) %>%
+   mutate(site = "Average")
+ 
+ stats_ave <- stats_ave %>%
+ arrange(factor(month,levels = month_level)) %>%
+   rbind(stats_ave %>%filter(month == 7))
+ stats_ave <- stats_ave %>%
+   mutate(mon_col = labels)
+ stats_ave$mon_col <- as.factor(stats_ave$mon_col)
+ 
+ 
+write.csv(stats_ave,paste0(output_path,"stats_allsites.csv"))
+#write.csv(stats_ave,paste0(output_path,"stats_ave.csv"))
+stats_2 <- stats_2 %>%
+  bind_rows(stats_2, stats_ave)
+
+read.csv(stats,paste0(output_path,"stats_allsites.csv"))
+
+stats_2$month <- as.factor(stats_2$month)
+stats_2$mon_col <- as.factor(stats_2$mon_col)
+
+labels <- c("MJJ","JJA",
+            "JAS","ASO","SON","OND","NDJ","DJF","JFM","FMA","MAM","AMJ","MJJ")
+labels <- c("ASO","SON","OND","NDJ","DJF","JFM","FMA","MAM","AMJ","MJJ","JJA","JAS")
+
+#stats_2$month <- as.factor(stats_2$month)
+
+p <- ggplot(stats_2,aes(x = mon_col, y = nMAE)) +
+     geom_line(aes(group = site), color = "grey", size = 0.8) +
+     geom_smooth(stats_ave, mapping = aes(x = mon_col, y= medMAE, group = site),
+             color = "steelblue", fill = "NA", alpha = 0.5,size = 1.5) +
+     labs(x="Month",y="nMAE", size = 14)+
+     scale_x_discrete(limits= labels,
+                      guide = guide_axis(angle = 45)) +
+     scale_y_continuous(limits = c(0, 0.6),breaks = c(0.0,0.2,0.4,0.6))+
+     theme_classic(base_size = 20)
+
+p
+
+ggsave(p, file = "nMAE_line_mjj.svg",width = 7, height = 5)
+ggplot(combine %>% filter(year(date) > 1901 & month(date) == 6), aes(x = date ,y= precip)) +
+  geom_line(aes( color = model))
 

@@ -10,7 +10,6 @@
 # | 
 # *--------------------------------------------------------------------------
 
-
 require(lubridate)
 require(tidyverse)
 require(mgcv)
@@ -21,36 +20,31 @@ require(zoo)
 library(RANN)
 require(viridis)
 library(ggthemes)
-library(cowplot)
-require(colorblindr)
 
 select <- dplyr::select
 
 data_path <- "../data"
 output_path <- "../output/"
 
-<<<<<<< Updated upstream
-inst_df <- readRDS(file =paste0(output_path,loc$site[1],"instrument_df.rds"))
-naspa_df <- readRDS(file = paste0(output_path,loc$site[1],"predictedpreip.rds"))
-pred_df<- readRDS(file = paste0(output_path,loc$site[1],"pred_df.rds"))
-=======
+# <<<<<<< Updated upstream
+# inst_df <- readRDS(file =paste0(output_path,loc$site[1],"instrument_df.rds"))
+# naspa_df <- readRDS(file = paste0(output_path,loc$site[1],"predictedpreip.rds"))
+# pred_df<- readRDS(file = paste0(output_path,loc$site[1],"pred_df.rds"))
+# =======
+
 GI_model <- function(loc){
 inst_df <- readRDS(file =paste0(output.p,"/instrument_df.rds"))
 naspa_df <- readRDS(file = paste0(output.p,"/pre_naspa.rds"))
 gpcc_df <- readRDS(file = paste0(output.p,"/gpcc_df.rds"))
-#pred_df<- readRDS(file = paste0(output_path,loc$site[1],"pred_df.rds"))
-
+pred_df<- readRDS(file = paste0(output.p,"/pmip_3m.rds"))
 
 inst_df <- inst_df %>%
   mutate(month = month(date))
->>>>>>> Stashed changes
+
 
 naspa_df <- naspa_df %>%
   group_by(date) %>%
   summarize(precip = mean(precip, na.rm = TRUE))
-
-inst_df <- inst_df %>%
-  mutate(month = month(date))
 
 naspa_df <- naspa_df %>%
   mutate(year = year(date)) %>%
@@ -58,7 +52,7 @@ naspa_df <- naspa_df %>%
   mutate(variable = "predicted") %>%
   mutate(model = "naspa")%>%
   mutate(units = "mm/month") %>%
-  mutate(site = "COL-OH") %>%
+  mutate(site = loc$site[1]) %>%
   select(date,site, year, variable, model , precip, units, month)
 
 prcp_df <- as.data.frame(rbind(inst_df,naspa_df,pred_df)) %>%
@@ -68,29 +62,26 @@ prcp_df$model <- as.factor(prcp_df$model)
 #second model
 prcp_pos <- prcp_df %>%
   filter(precip >0)
-
-<<<<<<< Updated upstream
-p <- ggplot(data=prcp_df %>% filter(year >1900), 
-            aes(x=date, y = precip, group=model,colour = model)) +
-=======
+# <<<<<<< Updated upstream
+# p <- ggplot(data=prcp_df %>% filter(year >1900), 
+#             aes(x=date, y = precip, group=model,colour = model)) 
+# =======
 prcp_pos$model <- as.factor(prcp_pos$model)
 
-colours = c("naspa" = "green4", "cru" = "#1A3FD4", "gridmet" = "orangered3") 
+#colours = c("naspa" = "green4", "cru" = "#1A3FD4", "gridmet" = "orangered3") 
 
-p <- ggplot(data=prcp_df %>% filter(month(date) == 7), 
-            aes(x=date, y = precip, group=model,colour = model,alpha = 0.8)) +
-  scale_color_manual(values = colours) +
->>>>>>> Stashed changes
+p <- ggplot(data=prcp_df, 
+            aes(x=date, y = precip, group=model,colour = model)) +
   #facet_wrap(~model) +
   geom_line() +
   labs(title = "prcp",
        x="year",y="precip(mm)", size = 20) +
   theme_classic(base_size = 20)
-
-<<<<<<< Updated upstream
 p
-ggsave(filename = paste0(output_path,loc$site[1],"prcp.png"),plot = p, width =12.5, height = 8, dpi = 300)
-=======
+# <<<<<<< Updated upstream
+# p
+# ggsave(filename = paste0(output_path,loc$site[1],"prcp.png"),plot = p, width =12.5, height = 8, dpi = 300)
+# =======
 
 ggsave(filename = paste0(output.p,"/prcp.png"),plot = p, width =12.5, height = 8, dpi = 300)
 ggsave(filename = paste0(output.p,"/prcp.svg"),plot = p, width =12.5, height = 8, dpi = 300)
@@ -123,8 +114,7 @@ mape_df <- mape_df %>%
 #   scale_x_discrete(limits=seq(1,12)) +
 #   theme_classic(base_size = 20)
 # 
-# ggsave(filename = paste0(output.p,"/rmse.png"),plot = p, width =12.5, height = 8, dpi = 300)
->>>>>>> Stashed changes
+
 
 ##############################################################
 ####                      Modeling                       #####
@@ -143,19 +133,11 @@ end_time <- Sys.time()
 dur <- end_time - start_time
 print(dur)
 
-#plot(gam_fit,all.terms=TRUE,scheme=2, pages=1)
-#summary(gam_fit)
 
-<<<<<<< Updated upstream
-#gam_fit <- gam(precip ~ model + s(month, by = model, bs = "cc", k = 6) + 
-#       family=gamma, data = prcp_pos)
-
-
-=======
 saveRDS(gam_fit, file =paste0(output.p,"/model.rds"))
 
 #gam_fit <- readRDS( file =paste0(output.p,"/model.rds"))
->>>>>>> Stashed changes
+
 ### Predict results with the new data
 gam_predict <- predict(gam_fit, type="response")
 
@@ -183,14 +165,9 @@ p <- ggplot(filter(seasonal_df, month(date) == tmonth), aes(x=date, y= est_mean,
   + labs("JFM 3-month precip(mm)") %>%
   + theme_classic(base_size = 25) %>%
   + theme(legend.position="bottom")
-<<<<<<< Updated upstream
-p
-ggsave(filename = paste0(output_path,loc$site[1],tmonth,"temodel.png"),plot = p, width =12.5, height = 8, dpi = 300)
-=======
+
 
 ggsave(filename = paste0(output.p,"/",tmonth,"temodel.png"),plot = p, width =12.5, height = 8, dpi = 300)
->>>>>>> Stashed changes
-#ggsave(filename = paste0(filename,"3.svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
 ### make a new combined_df with Gridmet as model
 
@@ -208,15 +185,14 @@ gridmet_pred_df <- data.frame(expand.grid(year = seq(min_naspa,max_naspa),month 
   bind_rows(data.frame(expand.grid(year = seq(min_cru,max_cru),month = seq(1,12)), model = "gridmet", plot_model = "cru")) %>%
   bind_rows(data.frame(expand.grid(year = seq(min_gcm,max_gcm),month = seq(1,12)), model = "gridmet", plot_model = "GFDL-CM4"))
 
-<<<<<<< Updated upstream
+
 pred_df <- data.frame(expand.grid(year = seq(min_naspa,max_naspa),month = seq(1,12)), model = "naspa", plot_model = "naspa") %>%
   bind_rows(data.frame(expand.grid(year = seq(min_gridm,max_gridm),month = seq(1,12)),model = "gridmet", plot_model = "gridmet")) %>%
   bind_rows(data.frame(expand.grid(year = seq(min_cru,max_cru),month = seq(1,12)), model = "cru", plot_model = "cru")) %>%
   bind_rows(data.frame(expand.grid(year = seq(min_gcm,max_gcm),month = seq(1,12)), model = "GFDL-CM4", plot_model = "GFDL-CM4"))
 
 ### Make predictions based on this
-GAM_predict <- predict(gam_fit, newdata = Gridmet_pred_df, se.fit = TRUE, type = "response")
-=======
+
 #pred_df <- data.frame(expand.grid(year = seq(min_naspa,max_naspa),month = seq(1,12)), model = "naspa", plot_model = "naspa") %>%
 #  bind_rows(data.frame(expand.grid(year = seq(min_gridm,max_gridm),month = seq(1,12)),model = "gridmet", plot_model = "gridmet")) %>%
 #  bind_rows(data.frame(expand.grid(year = seq(min_cru,max_cru),month = seq(1,12)), model = "cru", plot_model = "cru")) #%>%
@@ -224,7 +200,6 @@ GAM_predict <- predict(gam_fit, newdata = Gridmet_pred_df, se.fit = TRUE, type =
 
 ### Make predictions based on this
 GAM_predict <- predict(gam_fit, newdata = gridmet_pred_df, se.fit = TRUE, type = "response")
->>>>>>> Stashed changes
 
 GAM_predict  <- GAM_predict %>%
   data.frame() %>%
@@ -242,7 +217,7 @@ GAM_predict <- GAM_predict %>%
 ##############################################################
 #https://fromthebottomoftheheap.net/2016/12/15/simultaneous-interval-revisited/
 
-<<<<<<< Updated upstream
+
 set.seed(42)
 N <- 10000
 
@@ -260,8 +235,7 @@ absDev <- abs(sweep(simDev, 1, GAM_predict$se.fit.1, FUN = "/"))
 masd <- apply(absDev, 2L, max)
 crit <- quantile(masd, prob = 0.95, type = 8)
 
-=======
->>>>>>> Stashed changes
+
 modeled_df <- transform(gridmet_pred_df,
                         modGI = GAM_predict$est_mean,
                         lower = qgamma(0.025, shape = GAM_predict$est_shape,
@@ -277,14 +251,6 @@ modeled_df <- transform(gridmet_pred_df,
 modeled_df <- modeled_df %>%
   mutate(date = as.Date(paste0(year,"-",month,"-01")))
 
-<<<<<<< Updated upstream
-#Plot annual data
-basis_func_palette = colorblind_pal()(8)
-basis_func_palette = basis_func_palette[-c(1,5)]
-
-tmonth <- 7
-p <- ggplot(data=prcp_pos %>% filter(year > 200 & month == tmonth), aes(x=year, group=model,colour = model)) +
-=======
 saveRDS(modeled_df, file = paste0(output.p,"/modeled_df.rds"))
 saveRDS(prcp_pos, file = paste0(output.p,"/prcp_df.rds"))
 return(dur)
@@ -296,7 +262,7 @@ return(dur)
 
 plotm <- 7
 p <- ggplot(data=prcp_pos %>% filter(year > 200 & month %in% plotm), aes(x=year, group=model,colour = model)) +
->>>>>>> Stashed changes
+
   geom_line(aes(y=precip)) +
   geom_ribbon(data = modeled_df%>%filter(year > 200 & month == tmonth), aes(ymin= lowp,
                                      ymax= upp), alpha = 0.25, fill = "black") +
@@ -399,6 +365,7 @@ filename <- paste0(tyear[1], "allseason","modeled",loc$site[1])
 ggsave(filename = paste0(filename,".png"),plot = p, width =12.5, height = 8, dpi = 300)
 ggsave(filename = paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
+saveRDS(prcp_pos, file =paste0(output.p, "/3months_pr.rds") )
 
 
 

@@ -19,6 +19,7 @@ require(fitdistrplus)
 require(zoo)
 library(RANN)
 require(viridis)
+
 select <- dplyr::select
 
 data_path <- "../data"
@@ -40,7 +41,7 @@ predict_df <- predict_df %>%
   mutate(variable = "predicted") %>%
   mutate(model = "naspa")%>%
   mutate(units = "mm/month") %>%
-  mutate(site = "OKC,OK") %>%
+ # mutate(site = "OKC,OK") %>%
   select(date,site, year, variable, model , precip, units, month)
 
 prcp_df <- as.data.frame(rbind(inst_df,predict_df))

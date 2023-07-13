@@ -28,8 +28,8 @@ output_path <- "../output/"
 ##set up the location
 #find the row and column 
 # Columbus: Lat: 39.9612 N, Lon: 82.9988 W
-# Oklahoma city : 35.4676° N, 97.5164° 
-# San Diego: 32.7157° N, 117.1611° W
+# Oklahoma city : 35.4676? N, 97.5164? 
+# San Diego: 32.7157? N, 117.1611? W
 # San Antonio 29.4814578N,99.073463 W
 <<<<<<< Updated upstream
 
@@ -81,9 +81,11 @@ lon_list <- ncvar_get(nc_file, "lon")
 date_list <- ncvar_get(nc_file, "day") + as.Date("1900-01-01")
 
 #find grid cells belongs to one city and average all measures
-#lat_col <- which(lat_list > 35 & lat_list < 35.5) #OKC 35.4676° N, 97.5164° W
+#lat_col <- which(lat_list > 35 & lat_list < 35.5) #OKC 35.4676? N, 97.5164? W
 #lon_col <- which(lon_list > -98 & lon_list < -97.5)
 # San antonio 29.4814578,-99.073463
+lat_col <- which.min(abs(lat_list - loc$lat))
+lon_col <- which.min(abs(lon_list - loc$lon))
 
 lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
 lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
@@ -102,7 +104,7 @@ var_data_j[var_data_j ==32767] <- NA
 a <- colMeans(var_data_j, dim = 2)
 
 yup <- tibble(site =  loc$site[1], date = date_list, 
-                  variable = as.character(var_prcp), value = a, 
+                  variable = as.character(var_prcp), value = var_data_j, 
               model = "Gridmet")
 
 accum_df <- yup %>%
@@ -154,6 +156,9 @@ date_list <- ncvar_get(nc_cru, "time") + as.Date(time_scale[2])
 lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
 lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
 
+#lat_col <- which.min(abs(lat_list - 35.25))
+#lon_col <- which.min(abs(lon_list - (-97.75)))
+
 var_data_j <- ncvar_get(nc_cru, varid= var_prcp, start = c(lon_col,lat_col,1), 
                         count = c(1,1,-1))
 
@@ -193,26 +198,18 @@ instrument_df <- instrument_df %>%
   drop_na(precip) 
 saveRDS(instrument_df,file =paste0(output_path,loc$site[1],"instrument_df.rds"))
 
-p <- ggplot(data = instrument_df %>%filter(month(date) == 1)) + 
+p <- ggplot(data = instrument_df) + 
   geom_line(aes(x=date, y=precip, group = model, colour = model)) +
-<<<<<<< Updated upstream
-=======
   scale_color_manual(values = c("#1A3FD4", "orangered2")) +
->>>>>>> Stashed changes
   labs(title =  loc$site[1],
        y = "3 months ave. precip.(mm)") +
   theme_classic(base_size = 30)
 
-<<<<<<< Updated upstream
 p
-filename <- paste0(loc$site[1],"precip_inst")
-ggsave(filename =paste0(filename,"3.png"), plot = p, width =12.5, height = 8, dpi = 300)
-ggsave(filename =paste0(filename,"3.svg"), plot = p, width =12.5, height = 8, dpi = 300)
-=======
 filename <- paste0(output.p,"/Pinst")
 ggsave(filename =paste0(filename,".png"), plot = p, width =12.5, height = 8, dpi = 300)
 ggsave(filename =paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
->>>>>>> Stashed changes
+
 
 return()
 }

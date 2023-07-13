@@ -18,24 +18,15 @@ require(zoo)
 library(RANN)
 select <- dplyr::select
 
-<<<<<<< Updated upstream
 data_path <- "../data/"
 output_path <- "../output/"
 
 ### Read in
 
-gpcc_df <- readRDS(file = paste0(output_path,"gpcc_df.rds"))
-=======
-data_path <- "../data"
-output_path <- "../output"
-
-### Read in
 knn <- function(loc){
-  
   
 gpcc_df <- readRDS(file = paste0(output.p,"/gpcc_df.rds"))
 naspa_spi3<- readRDS(file = paste0(output.p,"/naspa_spi3.rds"))
->>>>>>> Stashed changes
 
 paras<- gpcc_df %>% select(date,shape3, rate3) %>%
   group_by(month(date)) %>%
@@ -53,8 +44,8 @@ library_df <- data.frame(i = seq(1,n_library), spi_thisjuly = as.numeric(gpcc_df
 library_df <- library_df %>% select(-i)
 
 n_neighbors <- 10
-begin.y <- yrs[[1]][1]
-end.y <- yrs[[2]][1] -1
+#begin.y <- yrs[[1]][1]
+#end.y <- yrs[[2]][1] -1
 predicted_df <- data.frame(year = NA)
 
 for (year_i in c(begin.y:end.y)){ 
@@ -99,11 +90,9 @@ for(k in seq(1,n_neighbors)){
   #smoothed <- loess(spi3 ~ as.numeric(date),data = naspa_subset_iter)
   #predicted_k <- data.frame(date= date_subset,
   #                         spi3 = predict(smoothed, newdata = naspa_subset$date))
-<<<<<<< Updated upstream
-if(year_i == 516){
-=======
+
 if(is.na(predicted_df$year[1]) == TRUE){
->>>>>>> Stashed changes
+
   predicted_df <- naspa_subset_iter
   
   } else {

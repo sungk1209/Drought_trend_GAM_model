@@ -15,10 +15,15 @@ require(ncdf4)
 require(fitdistrplus)
 require(zoo)
 library(RANN)
+
 select <- dplyr::select
 
+
+############set up location
 data_path <- "../data/"
 output_path <- "../output/"
+
+####################################function 
 
 naspa_download <- function(loc){
   
@@ -37,6 +42,8 @@ date_list <- ncvar_get(nc_wm, "time")
 tm_orig <- as.Date("0000-08-01")
 date_list <- tm_orig %m+% years(date_list)
 
+#lat_col <- which.min(abs(lat_list - 35.25))
+#lon_col <- which.min(abs(lon_list - (-97.75)))
 lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
 lon_col <- which(lon_list > loc$lon[1] & lon_list < loc$lon[2])
 
@@ -47,12 +54,10 @@ yuc <- tibble(date = date_list,spi3 = var_data_k) %>%
   drop_na()
 
 begin.y <- min(year(yuc$date))
-<<<<<<< Updated upstream
-end.y <- max(year(yuc$date))
-=======
 end.y <- max(year(yuc$date)) -1
 yrs <- list(begin.y, end.y)
->>>>>>> Stashed changes
+
+
 ### Add a month column
 naspa_spi3 <- yuc %>% 
   mutate(year = year(date)) %>%
@@ -86,8 +91,6 @@ yuc <- tibble(date = date_list,
               spi5 = var_data_k) %>%
   drop_na()
 
-
-
 naspa_spi5 <- yuc %>% 	
   mutate(month = 4) %>%
   mutate(year = year(date)) %>%
@@ -101,17 +104,12 @@ naspa_spi3 <- naspa_spi3 %>%
 
 
 head(naspa_spi3)
-<<<<<<< Updated upstream
-saveRDS(naspa_spi3,file = paste0(output_path,"naspa_spi.rds"))
-
-### SPI-3 3 months equals 3 months
-=======
 
 saveRDS(naspa_spi3,file = paste0(output.p,"/naspa_spi3.rds"))
 #############################################################
 ### GPCC
 ##################################################################
->>>>>>> Stashed changes
+
 n_days <- 12
 n_roll <- 3
 
@@ -188,12 +186,9 @@ gpcc_df <- gpcc_df %>%
   mutate(spi5 = qnorm(prob5,mean = 0, sd = 1)) %>%
   ungroup()
 
-<<<<<<< Updated upstream
-saveRDS(gpcc_df,file = paste0(output_path,"gpcc_df.rds"))
-=======
+
 saveRDS(gpcc_df,file = paste0(output.p,"/gpcc_df.rds"))
 return(yrs)
 }
 
->>>>>>> Stashed changes
 
