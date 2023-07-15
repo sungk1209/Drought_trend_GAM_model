@@ -83,7 +83,7 @@ derive_df <- modeled_df %>%
 	
 	draw_total <- data.frame()	
 	
-  for( i in c(1:100)) {
+  for( i in c(1:1000)) {
   
   
   draw_df <- draw_fromgammals(model = gam_fit, n = 1, new_data = gridmet_pred_df)
@@ -117,7 +117,38 @@ combined_plot <- grid.arrange(p1, p2, nrow = 2, top = "Oklahoma city 3 month prc
 # Display the combined plot
 print(combined_plot)
 	
+quantile_df <- draw_total %>%
+	group_by (date) %>%
+	summarize(low_sl = quantile(slope, 0.025, na.rm = TRUE),
+				hig_sl = quantile(slope, 0.975, na.rm = TRUE), 
+				low_pr = quantile(meanGI, 0.025, na.rm = TRUE), 
+				hig_pr = quantile(meanGI, 0.975, na.rm = TRUE))
+				
+quantile_df <- quantile_df %>%
+	mutate(Trend = ifelse(low_sl<0 & hig_sl<0, "Significant decrease",
+				   ifelse(hig_sl > 0 & low_sl >0, "Significant increase", "No Trend")) ) %>%
+	mutate(Trend = factor(Trend))
+
+draw_total <- draw_total %>% 
+		left_join(quantile_df %>% select(date, Trend), by = "date")
+
+
+p1 <- ggplot(draw_total,aes(x = date)) +
+		#geom_line() +
+		geom_line(data = draw_total %>% filter(draw == 10000), aes(x = date, y= slope, color = Trend)) +
+     	scale_color_manual(values = c("draws" = "grey90","Significant decrease" = "red", "Significant increase" = "blue", "No Trend" = "grey")) +
+		geom_ribbon(data = quantile_df, 
+					aes(x = date, ymin=low_sl, ymax= hig_sl),fill= "grey90") +
+		theme_bw()
 	
+p2 <- ggplot(draw_total, aes(x = date, y = meanGI, group = draw, color = "draws")) + 
+	#geom_line() +
+	geom_line(data = draw_total %>% filter(draw == 10000), aes(x = date, y= meanGI, color = Trend)) +
+  scale_color_manual(values = c("Significant decrease" = "red", "Significant increase" = "blue", "No Trend" = "grey")) +
+  theme_bw()
+	
+combined_plot <- grid.arrange(p1, p2, nrow = 2, top = "Oklahoma city 3 month prcp. in MJJ (top: slope, bottom: prcp)")
+
 
 disp_to_shape <- function(disp){
   1/ exp(-7 + log(1 + exp(disp)))
