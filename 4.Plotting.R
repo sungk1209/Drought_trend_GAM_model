@@ -12,7 +12,6 @@ require(lubridate)
 require(tidyverse)
 require(mgcv)
 require(dplyr)
-require(fitdistrplus)
 require(viridis)
 
 select <- dplyr::select
@@ -23,105 +22,60 @@ output_path <- "../output/"
 #################################################################
 #######                         Plotting               ##########
 #################################################################
+plot_model <- function(loc) {
 
-plotm <- 1
+prcp_pos<- readRDS(file = paste0(output.p,"/prcp_df.rds"))
+modeled_df<- readRDS(file = paste0(output.p,"/modeled_df.rds"))
+plot_ms <- c(1,4,7,10)
+colours = c("naspa" = "green4", "cru" = "#1A3FD4", "gridmet" = "orangered3") 
+supp.labs <- c("NDJ","FMA","MJJ","ASO")
+names(supp.labs) <- plot_ms
 
-p <- ggplot(data= modeled_df %>% filter(month %in% plotm), 
+#for (i in 1:length(plot_ms)) {
+  
+  plotm <- plot_ms
+ 
+p <- ggplot(data= modeled_df %>% filter(year > 1400 & month %in% plotm), 
             aes(x = year, y = modGI, group = plot_model)) +
-  geom_line(data= prcp_pos %>%filter(month %in% plotm), 
-            aes(y = precip, group=model,colour = model), size = 0.7, alpha = 0.45) +
-  geom_ribbon(data = modeled_df%>%filter(month %in% plotm), 
-              aes(ymin= lowp, ymax= upp,fill = plot_model), alpha = 0.5) +
-  geom_ribbon(data = modeled_df%>%filter(month %in% plotm),
+   geom_ribbon(data = modeled_df%>% filter(year > 1400 & month %in% plotm),
+              aes(ymin= lowp, ymax = upp), alpha = 0.3) +
+  geom_ribbon(data = modeled_df%>% filter(year > 1400 & month %in% plotm),
               aes(ymin= lower,ymax= upper), alpha = 0.25, fill = "grey") +
-  geom_line(aes(colour = plot_model), size = 1.3) +
-  scale_fill_manual(values = colours) +
-  scale_color_manual(values = colours) +
-  labs(title = paste(plotm,loc$site[1]),
-       y="3-Month ave.prcp(mm/month)",
+  geom_line(data= prcp_pos%>% filter(year > 1400 & month %in% plotm) , 
+            aes(y = precip, group = model, colour = model), size = 0.7, alpha = 0.6) +
+  geom_line(aes(color = "Modeled Trend"), color = "black",size = 1.4, alpha = 0.7) +
+  scale_fill_manual() +
+  scale_colour_manual(values = colours) +
+  scale_x_continuous(expand= c(0,0), limits = c(1400, NA)) +
+  scale_y_continuous(expand= c(0,0), limits = c(0, NA)) +
+  facet_wrap(~month, ncol = 1,
+             labeller = labeller(month = supp.labs)) +
+  labs(#title = paste(plotm,loc$site[1]),
+       y="3-Month ave.prcp(mm/Month)",
        color ='datasets')+
-  theme_classic(base_size = 20)  
+  theme(text = element_text(colour = 'black',size = 17),
+        strip.text = element_blank(),
+        #strip.text = element_text(colour = 'black',size =15),
+        axis.ticks.length=unit(0.3, "lines"),
+        strip.background = element_blank(),
+        panel.border = element_rect(fill = NA, color = "black"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_blank())
+  
 p
 
-ggsave(filename = paste0(output.p,"/",plotm,"LT.png"),plot = p, width =12.5, height = 8, dpi = 300)
-ggsave(filename = paste0(output.p,"/",plotm,"LT.svg"),plot = p, width =12.5, height = 8, dpi = 300)
+ggsave(filename = paste0(output.p,"/LT.png"),plot = p, width =6, height = 10, dpi = 300)
+ggsave(filename = paste0(output.p,"/LT.svg"),plot = p, width =6, height = 10, dpi = 300)
 
-tyear <- seq(1900,2020)
-plotm <- 10
-p <- ggplot(data= modeled_df %>% filter(year %in% tyear, month %in% plotm), 
-            aes(x = year, y = modGI, group = interaction(month,plot_model))) +
-  geom_line(color = "black", size = 1) +
-  geom_line(data= prcp_pos %>%filter(year %in% tyear,month %in% plotm), 
-            aes(y = precip, group=model,colour = model)) +
-  scale_color_manual(values = colours) +
-  geom_ribbon(data = modeled_df%>%filter(year %in% tyear,month %in% plotm), 
-              aes(ymin= lowp, ymax= upp), alpha = 0.25, fill = "blue") +
-  geom_ribbon(data = modeled_df%>%filter(year %in% tyear, month %in% plotm),
-              aes(ymin= lower,ymax= upper), alpha = 0.25, fill = "grey") +
-  #facet_wrap(~ month, ncol = 2) +
-  #scale_colour_viridis() +
-  labs(title = paste(plotm,loc$site[1]),
-       y="3-Month ave.prcp(mm/month)",
-       color ='datasets')+
-  theme_classic(base_size = 20)  
-p
+#ggsave(filename = paste0(output.p,"/",plotm,"_LT2.png"),plot = p, width =10, height = 8, dpi = 300)
+#ggsave(filename = paste0(output.p,"/",plotm,"_LT2.svg"),plot = p, width =10, height = 8, dpi = 300)
+}
+return()
 
-ggsave(filename = paste0(output.p,"/",plotm,"20LT.png"),plot = p, width =12.5, height = 8, dpi = 300)
-ggsave(filename = paste0(output.p,"/",plotm,"20LT.svg"),plot = p, width =12.5, height = 8, dpi = 300)
-
-tyear <- seq(1,2020,20)
-p <- ggplot(data= modeled_df %>% filter (year %in% tyear), 
-            aes(x = month, y = modGI, 
-                group = interaction(year,plot_model), color = year)) +
-	geom_line(size = 0.7) +
-	scale_colour_viridis() +
-	labs(title = loc$site[1],
-       y="3-Month ave.prcp(mm/month)", size = 20)+
-	scale_x_discrete(name ="Month",limits=seq(1,12)) +
-	theme_classic(base_size = 20)
-p
-
-ggsave(filename = paste0(output.p, "combinedm.png"),plot = p, width =18, height = 12, dpi = 300)
-
-
-### Loop through each site
-for (j in seq(1, length(site_list))){
-
-short_name_j <- site_list[j]
-
-cat(j)
-cat(short_name_j)
-
-### Quick plot of Initial Values
-month_breaks <- c(yday(seq(as.Date("1900-01-01"), as.Date("1900-12-31"), by = "1 month")), 365)
-month_labels <- c(as.character(month(seq(as.Date("1900-01-01"), as.Date("1900-12-31"), by = "1 month"), label=TRUE)), "Jan")
-
-### Find all files within folder
-#write_output_path <- "/run/media/jhstagge/Seagate Backup Plus Drive/spibayes_paper/output/gauge_tensor"
-site_folder <- file.path(write_output_path, short_name_j)
-
-### Quick plot of Initial Values
-month_breaks <- c(yday(seq(as.Date("1900-01-01"), as.Date("1900-12-31"), by = "1 month")), 365)
-month_labels <- c(as.character(month(seq(as.Date("1900-01-01"), as.Date("1900-12-31"), by = "1 month"), label=TRUE)), "Jan")
-
-### Find all files within folder
-#write_output_path <- "/run/media/jhstagge/Seagate Backup Plus Drive/spibayes_paper/output/gauge_tensor"
-site_folder <- file.path(write_output_path, short_name_j)
-
-estimate_nc <- nc_open(file.path(site_folder, paste0(short_name_j, "_estimate.nc")))
-
-date_vec <- ncvar_get(estimate_nc, "time") + as.Date("1900-01-01")
-year_vec <- ncvar_get(estimate_nc, "year") 
-jdate_vec <- ncvar_get(estimate_nc, "jdate") 
-
-mean_mat <- ncvar_get(estimate_nc, "mean") 
-shape_mat <- ncvar_get(estimate_nc, "shape") 
-scale_mat <- ncvar_get(estimate_nc, "scale") 
-
-dist_df <- data.frame(year = year_vec, jdate = jdate_vec, shape = apply(est_shape, 1, mean), scale = apply(est_scale, 1, mean))
-
-dist_df <- bind_cols(gridmet_pred_df,GAM_predict)
-
+####################################################################################
+#########Plot seasonally varied long-term change             #######################
+####################################################################################
 
 year_seq <-  c(seq(0, 2020, 200),2020)
 month_seq <- seq(1,12)
@@ -129,47 +83,141 @@ month_seq <- seq(1,12)
 plot_dist <- tibble(year = NA, month = NA,  ymin = NA, lower = NA, middle = NA, upper = NA, ymax = NA)
 
 for (k in seq(1, length(year_seq))) {
-              for(i in seq(1,12)){
-
-              dist_temp <- dist_df %>%
-                            filter(year == year_seq[k] & month %in%  month_seq[i])
-              
-              if(dim(dist_temp)[1] == 0) {next}
-            
-              dist_temp_full <- tibble(year = year_seq[k], 
+  for(i in seq(1,12)){
+    
+    dist_temp <- dist_df %>%
+      filter(year == year_seq[k] & month %in%  month_seq[i])
+    
+    if(dim(dist_temp)[1] == 0) {next}
+    
+    dist_temp_full <- tibble(year = year_seq[k], 
                              month = month_seq[i], 
-                            # date = x_date[i],
+                             # date = x_date[i],
                              ymin = qgamma(0.025, shape = dist_temp$est_shape[1], scale = dist_temp$est_scale[1]),
                              lower =qgamma(0.25, shape = dist_temp$est_shape[1], scale = dist_temp$est_scale[1]),
                              middle = qgamma(0.5, shape = dist_temp$est_shape[1], scale = dist_temp$est_scale[1]),
                              upper = qgamma(0.75, shape = dist_temp$est_shape[1], scale = dist_temp$est_scale[1]),
                              ymax = qgamma(0.975, shape = dist_temp$est_shape[1], scale = dist_temp$est_scale[1]))
-              
-              plot_dist <- plot_dist %>%
-                             bind_rows(dist_temp_full)
-
-              rm(dist_temp_full)
-              rm(dist_temp)
-              }
+    
+    plot_dist <- plot_dist %>%
+      bind_rows(dist_temp_full)
+    
+    rm(dist_temp_full)
+    rm(dist_temp)
+  }
 }
 
 plot_dist <- plot_dist %>%
-              mutate(plot_month = month) %>%
-              mutate(plot_month = factor(month, levels = unique(month)))
+  mutate(plot_month = month) %>%
+  mutate(plot_month = factor(month, levels = unique(month)))
 plot_dist <- plot_dist %>%
   drop_na()
 
 p <- ggplot(plot_dist, aes(x=plot_month, lower=lower, upper = upper, middle = middle, ymin = ymin, ymax = ymax, fill = factor(year))) %>%
-              + geom_boxplot(stat = "identity", colour = "grey30", alpha = 0.9, size = 0.35) %>%
-              + scale_fill_viridis(name = "Year", option = "inferno", discrete = TRUE) %>%
-              + scale_y_continuous(name = "3-month prcp (mm/month)") %>%
-              + scale_x_discrete(name = "Month") %>%
-              + theme_classic(11, base_size = 20)
+  + geom_boxplot(stat = "identity", colour = "grey30", alpha = 0.9, size = 0.35) %>%
+  + scale_fill_viridis(name = "Year", option = "inferno", discrete = TRUE) %>%
+  + scale_y_continuous(name = "3-month prcp (mm/month)") %>%
+  + scale_x_discrete(name = "Month") %>%
+  + theme_classic(11, base_size = 20)
 
 
-### Save Figure
+p### Save Figure
 ggsave(paste0(output.p,"/plot.png"), p, width =12.5, height = 4.5, dpi = 300)
 ggsave(paste0(output.p,"/plot.svg"), p, width =12.5, height = 4.5)
 
+return()
 }
 
+##############################################################################
+################plot for all region
+#############################################################################
+plot_model2 <- function(loc) {
+  
+  prcp_pos<- readRDS(file = paste0(output.p,"/prcp_df.rds"))
+  modeled_df<- readRDS(file = paste0(output.p,"/modeled_df.rds"))
+  plotm <- c(1,4,7,10)
+  supp.labs <- c("NDJ","FMA","MJJ","ASO")
+  names(supp.labs) <- plotm
+
+#plotm <- plot_ms
+
+modeled_df$month <- as.factor(modeled_df$month)  
+p <- ggplot(data= modeled_df %>% filter(month %in% plotm), 
+            aes(x = year, y = modGI)) +
+  geom_line(aes(group = month, color = month), size = 0.6) +
+  #geom_ribbon(data = modeled_df %>% filter(month %in% plotm),
+  #            aes(ymin = lower, ymax = upper, group = month, color = month, fill = month), 
+  #            outline.type = "full", linetype = 2, alpha = 0.1, size = 0.6) +
+  geom_line(data = modeled_df %>% filter(month %in% plotm),
+              aes(y = lower, group = month, color = month), 
+              linetype = 2, size = 0.9) +
+  #scale_colour_viridis_d() +
+  scale_colour_manual(values = c("#0836C1","#3E88EF","#d62828","#f77f00")) +
+  scale_x_continuous(expand= c(0,0), limits = c(0, NA)) +
+  #labs(title = loc$site[1],
+  #    color ='Month')+
+  theme(text = element_text(colour = 'black',size = 13),
+        strip.text = element_text(colour = 'black',size = 13),
+        axis.ticks.length=unit(0.3, "lines"),
+        panel.border = element_rect(fill = NA, color = "black"),
+      #  legend.position="none",
+        axis.title = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_blank())
+
+p
+ggsave(paste0(output.p,"/LTspi_low.png"), p, width = 3, height = 2, dpi = 300)
+ggsave(paste0(output.p,"/LTspi_low.svg"), p, width = 3, height = 2)
+}
+
+# tyear <- seq(1,2020,20)
+# p <- ggplot(data= modeled_df %>% filter (year %in% tyear),
+#             aes(x = month, y = modGI,
+#                 group = interaction(year,plot_model), color = year)) +
+# 	geom_line(size = 0.7) +
+# 	scale_colour_viridis() +
+# 	labs(title = loc$site[1],
+#        y="3-Month ave.prcp(mm/month)", size = 20)+
+# 	scale_x_discrete(name ="Month",limits=seq(1,12)) +
+# 	theme_classic(base_size = 20)
+# 
+# 
+# ggsave(filename = paste0(output.p, "combinedm.png"),plot = p, width =18, height = 12, dpi = 300)
+
+# 
+
+#ggsave(filename = paste0(output.p,"/",plotm,"20LT.png"),plot = p, width =12.5, height = 8, dpi = 300)
+#ggsave(filename = paste0(output.p,"/",plotm,"20LT.svg"),plot = p, width =12.5, height = 8, dpi = 300)
+
+#}
+plotm <- plot_ms
+
+p <- ggplot(data= modeled_df %>% filter(year > 1875 & month %in% plotm), 
+            aes(x = year, y = modGI, group = model)) +
+  geom_line(aes(color = model), size = 1.2) +
+  geom_line(data= prcp_pos %>% filter(year > 1875 & month %in% plotm), 
+            aes(y = precip, group = model, colour = model), size = 0.5, alpha = 0.7) +
+  geom_ribbon(data = modeled_df %>% filter(year > 1875 & month %in% plotm), 
+              aes(ymin= lowp, ymax = upp, group = model,fill = model), alpha = 0.25) +
+  geom_ribbon(data = modeled_df %>% filter(year > 1875 & month %in% plotm),
+              aes(ymin= lower,ymax= upper), alpha = 0.25, fill = "grey") +
+  scale_fill_manual(values = colours) +
+  scale_colour_manual(values = colours) +
+  scale_x_continuous(expand= c(0,0), limits = c(1875, NA)) +
+  facet_wrap(~month, ncol = 2,
+             labeller = labeller(month = supp.labs)) +
+  labs(#title = paste(plotm,loc$site[1]),
+    y="3-Month ave.prcp(mm/Month)",
+    color ='datasets')+
+  theme(text = element_text(colour = 'black',size = 20),
+        strip.text = element_text(colour = 'black',size =15),
+        axis.ticks.length=unit(0.3, "lines"),
+        panel.border = element_rect(fill = NA, color = "black"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_blank())
+
+p
+ggsave(paste0(output.p,"/1875LT.png"), p, width =4, height = 3)
+ggsave(paste0(output.p,"/1875LT.svg"), p, width = 4, height = 3)

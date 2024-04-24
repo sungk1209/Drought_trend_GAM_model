@@ -20,12 +20,8 @@ select <- dplyr::select
 data_path <- "../data/"
 output_path <- "../output/"
 
-### Read in
-#warm_spi <- read_tsv("../data/NASPA_WARM_SPI.txt")
-# the txt file is for Oklahoma city
-#naspa_spi3 <- read_tsv("../data/NASPA_Reconstructed_MJJ_0_2016_SPI.txt", skip = 2)%>% 
-#  rename(year = Year, spi3=SPI)
-
+naspa_download <- function(loc){
+  
 fn_wm <- "NASPA_WARM_SPI.nc"
 short_name <- "pr"
 
@@ -51,7 +47,9 @@ yuc <- tibble(date = date_list,spi3 = var_data_k) %>%
   drop_na()
 
 begin.y <- min(year(yuc$date))
-end.y <- max(year(yuc$date)) -1
+end.y <- max(year(yuc$date)) 
+yrs <- list(begin.y, end.y)
+
 ### Add a month column
 naspa_spi3 <- yuc %>% 
   mutate(year = year(date)) %>%
@@ -98,11 +96,13 @@ naspa_spi3 <- naspa_spi3 %>%
 
 
 head(naspa_spi3)
-saveRDS(naspa_spi3,file = paste0(output_path,"naspa_spi.rds"))
-saveRDS(naspa_spi3,file = paste0(output.p,"/naspa_spi.rds"))
+### SPI-3 3 months equals 3 months
+
+saveRDS(naspa_spi3,file = paste0(output.p,"/naspa_spi3.rds"))
 #############################################################
 ### GPCC
 ##################################################################
+
 n_days <- 12
 n_roll <- 3
 
@@ -111,11 +111,6 @@ gpcc <- "../data/precip.mon.total.v7.nc"
 nc_gpcc <- nc_open(gpcc)
 print(nc_gpcc)
 
-#gpcc_df: precipitation: total monthly precipitation
-# Columbus: Lat: 39.9612 N, Lon: 82.9988 W
-#loc <- data.frame(site="columbus,co",
-#                  lon=c(-83,-82.5),
-#                  lat= c(39.5,40))
 
 var1 <- attributes(nc_gpcc$var)
 lat_list <- ncvar_get(nc_gpcc, "lat")
@@ -127,7 +122,7 @@ date_list <- date_list + tm_orig
 lat_col <- which(lat_list > loc$lat[1] & lat_list < loc$lat[2])
 lon_col <- which(lon_list > loc$lon[1] + 360 & lon_list < loc$lon[2] + 360)
 
-var_data_j <- ncvar_get(nc_gpcc, varid= var1$names[2], start = c(lon_col,lat_col,1), 
+var_data_j <- ncvar_get(nc_gpcc, varid= var1$names, start = c(lon_col,lat_col,1), 
                         count = c(1,1,-1))
 plot(x = date_list, y = var_data_j, type = 'l')
 
@@ -137,7 +132,10 @@ yup <- tibble(site = loc$site[1], date = date_list,
 gpcc_df <- yup %>%
   mutate(model = "GPCC") %>%
   mutate(units = "mm/month") %>%
-  select(date,site, model, value,units)
+  mutate(year = year(date)) %>%
+  mutate(month = month(date)) %>%
+  mutate(month_day= paste0(month(date),"-",day(date))) %>%
+  select(date,site, year,month, model, value,units)
 
 n_roll <- 3
 n_roll_min <- 2
@@ -177,6 +175,7 @@ gpcc_df <- gpcc_df %>%
   ungroup()
 
 saveRDS(gpcc_df,file = paste0(output.p,"/gpcc_df.rds"))
-
+return(yrs)
+}
 
 

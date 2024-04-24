@@ -25,34 +25,33 @@ select <- dplyr::select
 data_path <- "../data/"
 output_path <- "../output/"
 
-### Set up output folders
-#dir.create(write_output_path, recursive=TRUE, showWarnings = FALSE)
 ##set up the location
 #find the row and column 
 # Columbus: Lat: 39.9612 N, Lon: 82.9988 W
-# Oklahoma city : 35.4676° N, 97.5164° 
-# San Diego: 32.7157° N, 117.1611° W
+# Oklahoma city : 35.4676? N, 97.5164? 
+# San Diego: 32.7157? N, 117.1611? W
 # San Antonio 29.4814578N,99.073463 W
-
-#loc <- data.frame(site = "COL_OH",
-#					lon = c(-83,-82.5),
-#					lat = c(39.5, 40))
 
 #loc <- data.frame(site="OKC,OK",
 #                  lon=c(-98,-97.5),
 #                  lat= c(35.0,35.5))
 
-dir.create(file.path(output_path,loc$site[1]))
-output.p <- file.path(output_path, loc$site[1])
-
 #loc <- data.frame(site="phoenix,AZ",
 #                  lon= c(-112.5,-112.0),
 #                  lat=c(33.50,34.00))
 
-loc <- data.frame(site="SanJuan_CO",
-                 lon= c(-106.5,-106.0),
-                  lat=c(37.50,38.00))
+#loc <- data.frame(site="SanJuan_CO",
+#                 lon= c(-106.5,-106.0),
+#                  lat=c(37.50,38.00))
+#loc <- data.frame(site = "COL_OH",
+#					lon = c(-83,-82.5),
+#					lat = c(39.5, 40))
 
+
+######################################################################
+#1. Download Gridmet data
+##########################################################################3
+inst_download <- function(loc){
 
 ncdf_df <- data.frame(short_name = c("pr"))
 
@@ -60,9 +59,6 @@ ncdf_df <- ncdf_df %>%
   mutate(url = paste0('http://thredds-prod.nkn.uidaho.edu:8080/thredds/dodsC/agg_met_',short_name, 
                       '_1979_CurrentYear_CONUS.nc#fillmismatch'))
 
-######################################################################
-#1. Download Gridmet data
-##########################################################################3
 
 ### Open the NCDF file
 nc_file <- nc_open(ncdf_df$url)
@@ -74,7 +70,7 @@ lon_list <- ncvar_get(nc_file, "lon")
 date_list <- ncvar_get(nc_file, "day") + as.Date("1900-01-01")
 
 #find grid cells belongs to one city and average all measures
-#lat_col <- which(lat_list > 35 & lat_list < 35.5) #OKC 35.4676° N, 97.5164° W
+#lat_col <- which(lat_list > 35 & lat_list < 35.5) #OKC 35.4676? N, 97.5164? W
 #lon_col <- which(lon_list > -98 & lon_list < -97.5)
 # San antonio 29.4814578,-99.073463
 
@@ -92,7 +88,7 @@ var_data_j[var_data_j ==32767] <- NA
 
 ####Gridmet has fine resolution, need to average over all grid cells
 #Unit of gridcell: daily accumulated 
-a <- colMeans(var_data_j, dim = 2)
+a <- colMeans(var_data_j, dim = 2, na.rm = TRUE)
 
 yup <- tibble(site =  loc$site[1], date = date_list, 
                   variable = as.character(var_prcp), value = a, 
@@ -186,12 +182,14 @@ instrument_df <- instrument_df %>%
   drop_na(precip) 
 saveRDS(instrument_df,file =paste0(output.p,"/instrument_df.rds"))
 
-p <- ggplot(data = instrument_df) + 
+p <- ggplot(data = instrument_df %>%filter(month(date) == 1)) + 
   geom_line(aes(x=date, y=precip, group = model, colour = model)) +
-  scale_color_manual(values = c("steelblue3", "orangered2")) +
+
+  scale_color_manual(values = c("#1A3FD4", "orangered2")) +
   labs(title =  loc$site[1],
-       y = "Mean prcp.(mm/month)") +
+       y = "3 months ave. precip.(mm)") +
   theme_classic(base_size = 30)
+
 
 p
 filename <- paste0(output.p,"/Pinst")
@@ -199,6 +197,8 @@ ggsave(filename =paste0(filename,".png"), plot = p, width =12.5, height = 8, dpi
 ggsave(filename =paste0(filename,".svg"), plot = p, width =12.5, height = 8, dpi = 300)
 
 
+return()
+}
 
 ###Discarded
 
